@@ -14,7 +14,7 @@ It supports various DNS record types and handles DNS response parsing, including
 You can install `dnsclient.js` via npm:
 
 ```bash
-npm install doh-client
+npm install dnsclient.js
 ```
 
 ## Usage

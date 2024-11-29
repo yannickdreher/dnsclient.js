@@ -1,6 +1,6 @@
 {
-  "name": "doh-client",
-  "version": "1.0.1",
+  "name": "dnsclient.js",
+  "version": "1.0.0",
   "description": "JavaScript library for performing DNS queries over HTTPS",
   "main": "dnsclient.js",
   "scripts": {
