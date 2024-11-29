@@ -1,10 +1,10 @@
 /*
  * File: dnsclient.js
- * Project: dnsclient.js
+ * Project: doh-client
  * File Created: Friday, 29th November 2024 3:30:10 pm
  * Author: Yannick Dreher (yannick.dreher@dremaxx.de)
  * -----
- * Last Modified: Friday, 29th November 2024 4:44:42 pm
+ * Last Modified: Friday, 29th November 2024 6:51:39 pm
  * -----
  * MIT License
  * 
