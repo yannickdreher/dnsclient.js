@@ -9,6 +9,14 @@ It supports various DNS record types and handles DNS response parsing, including
 - Support for multiple DNS record types (A, NS, CNAME, SOA, MX, TXT, AAAA)
 - Handles DNS response parsing and name compression
 
+## Installation
+
+You can install `dnsclient.js` via npm:
+
+```bash
+npm install doh-client
+```
+
 ## Usage
 
 ```JavaScript
