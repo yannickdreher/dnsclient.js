@@ -1,0 +1,25 @@
+{
+  "name": "doh-client",
+  "version": "1.0.0",
+  "description": "JavaScript library for performing DNS queries over HTTPS",
+  "main": "dnsclient.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yannickdreher/dnsclient.js.git"
+  },
+  "keywords": [
+    "dns",
+    "DoH",
+    "client",
+    "HTTPS"
+  ],
+  "author": "Yannick Dreher",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yannickdreher/dnsclient.js/issues"
+  },
+  "homepage": "https://github.com/yannickdreher/dnsclient.js#readme"
+}
