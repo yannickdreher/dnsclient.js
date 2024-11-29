@@ -22,7 +22,7 @@ npm install doh-client
 ```JavaScript
 import * as DNS from './dnsclient.js';
 
-const question = new DNS.Question(<domainname>, <type>, <class>);
+const question = new DNS.Question(<domainname>, DNS.TYPE.A, DNS.CLAZZ.IN);
 
 try {
     const result = await DNS.query('https://<hostname>/dns-query', question);
@@ -32,8 +32,27 @@ try {
 }
 ```
 
+Available types and classes:
+```JavaScript
+export const TYPE = Object.freeze({
+    A: 1,
+    NS: 2,
+    CNAME: 5,
+    SOA: 6,
+    MX: 15,
+    TXT: 16,
+    AAAA: 28
+});
+
+export const CLAZZ = Object.freeze({
+    IN: 1,
+    CS: 2,
+    CH: 3,
+    HS: 4,
+    NONE: 254,
+    ANY: 255
+})
+```
+
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request on GitHub.
-
-## License
-This project is licensed under the MIT License. See the LICENSE file for details.

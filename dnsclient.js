@@ -30,12 +30,12 @@
  */
 
 // Enums
-const qrs = Object.freeze({
+const QR = Object.freeze({
     0: 'QUERY',
     1: 'RESPONSE'
 });
 
-const opcodes = Object.freeze({
+const OPCODE_NAMES = Object.freeze({
     0: 'QUERY',    // Standard query
     1: 'IQUERY',   // Inverse query (obsolete)
     2: 'STATUS',   // Server status request
@@ -45,7 +45,7 @@ const opcodes = Object.freeze({
     6: 'DSO'       // DNS Stateful Operations
 });
 
-const rcodes = Object.freeze({
+const RCODE_NAMES = Object.freeze({
     0: 'NOERROR',    // DNS Query completed successfully
     1: 'FORMERR',    // DNS Query Format Error
     2: 'SERVFAIL',   // Server failed to complete the DNS request
@@ -67,7 +67,7 @@ const rcodes = Object.freeze({
     18: 'BADCOOKIE'  // Bad/missing server cookie
 });
 
-const types = Object.freeze({
+const TYPE_NAMES = Object.freeze({
     1: 'A',
     2: 'NS',
     3: 'MD',
@@ -159,7 +159,7 @@ const types = Object.freeze({
     32769: 'DLV'
 });
 
-const classes = Object.freeze({
+const CLASS_NAMES = Object.freeze({
     1: 'IN',       // Internet
     2: 'CS',       // CSNET (obsolete)
     3: 'CH',       // CHAOS
@@ -167,6 +167,25 @@ const classes = Object.freeze({
     254: 'NONE',   // QCLASS NONE
     255: 'ANY'     // QCLASS ANY
 });
+
+export const TYPE = Object.freeze({
+    A: 1,
+    NS: 2,
+    CNAME: 5,
+    SOA: 6,
+    MX: 15,
+    TXT: 16,
+    AAAA: 28
+});
+
+export const CLAZZ = Object.freeze({
+    IN: 1,
+    CS: 2,
+    CH: 3,
+    HS: 4,
+    NONE: 254,
+    ANY: 255
+})
 
 // Models
 export class Question {
@@ -179,13 +198,13 @@ export class Question {
 
 // Functions
 function parseHeaderFlags(buffer) {
-    const qr = qrs[(buffer >> 15) & 1];
-    const opcode = opcodes[(buffer >> 11) & 0xF];
+    const qr = QR[(buffer >> 15) & 1];
+    const opcode = OPCODE_NAMES[(buffer >> 11) & 0xF];
     const aa = (buffer >> 10) & 1;
     const tc = (buffer >> 9) & 1;
     const rd = (buffer >> 8) & 1;
     const ra = (buffer >> 7) & 1;
-    const rcode = rcodes[buffer & 0xF]; 
+    const rcode = RCODE_NAMES[buffer & 0xF]; 
     return {qr, opcode, aa, tc, rd, ra, rcode};
 }
 
@@ -204,8 +223,8 @@ function parseResponseMessage(buffer) {
         const name = parseName(view, offset);
         offset = name.offset;
 
-        const type = types[view.getUint16(offset)];
-        const clazz = classes[view.getUint16(offset + 2)];
+        const type = TYPE_NAMES[view.getUint16(offset)];
+        const clazz = CLASS_NAMES[view.getUint16(offset + 2)];
         offset += 4;
 
         questions.push({ name: name.name, type, clazz, });
@@ -216,8 +235,8 @@ function parseResponseMessage(buffer) {
         const name = parseName(view, offset);
         offset = name.offset;
 
-        const type = types[view.getUint16(offset)];
-        const clazz = classes[view.getUint16(offset + 2)];
+        const type = TYPE_NAMES[view.getUint16(offset)];
+        const clazz = CLASS_NAMES[view.getUint16(offset + 2)];
         const ttl = view.getUint32(offset + 4);
         const dataLength = view.getUint16(offset + 8);
         offset += 10;
@@ -353,7 +372,6 @@ export async function query(url, question) {
     } else {
         const buffer = await response.arrayBuffer();
         message = parseResponseMessage(buffer);
-        console.log(message);
     }
 
     const latency = Math.round(end - start);
