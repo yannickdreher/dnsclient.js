@@ -1,10 +1,10 @@
-/*
+/* @preserve
  * File: dnsclient.js
- * Project: doh-client
+ * Project: dnsclient.js
  * File Created: Friday, 29th November 2024 3:30:10 pm
  * Author: Yannick Dreher (yannick.dreher@dremaxx.de)
  * -----
- * Last Modified: Friday, 29th November 2024 6:51:39 pm
+ * Last Modified: Sunday, 1st December 2024 7:54:16 pm
  * -----
  * MIT License
  * 
@@ -27,10 +27,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
+ * @endpreserve
  */
 
 // Enums
-const QR = Object.freeze({
+const QR_NAMES = Object.freeze({
     0: 'QUERY',
     1: 'RESPONSE'
 });
@@ -198,7 +199,7 @@ export class Question {
 
 // Functions
 function parseHeaderFlags(buffer) {
-    const qr = QR[(buffer >> 15) & 1];
+    const qr = QR_NAMES[(buffer >> 15) & 1];
     const opcode = OPCODE_NAMES[(buffer >> 11) & 0xF];
     const aa = (buffer >> 10) & 1;
     const tc = (buffer >> 9) & 1;
@@ -241,14 +242,15 @@ function parseResponseMessage(buffer) {
         const dataLength = view.getUint16(offset + 8);
         offset += 10;
 
-        let data = '';
+        let data = [{key: '', value: ''}];
         if (type === 'A') {
             if (dataLength !== 4) {
                 throw new Error('Invalid IPv4 byte array length.');
             }
-            data = new Uint8Array(view.buffer.slice(offset, offset + dataLength)).join('.');
+            const ipv4 = new Uint8Array(view.buffer.slice(offset, offset + dataLength)).join('.');
+            data = [{key: 'ipv4', value: ipv4}];
         } else if (type === 'NS' || type === 'CNAME') {
-            data = parseName(view, offset).name;
+            data = [{key: 'name', value: parseName(view, offset).name}];
         } else if (type === 'SOA') {
             const mname = parseName(view, offset);
             offset = mname.offset;
@@ -260,28 +262,38 @@ function parseResponseMessage(buffer) {
             const expire  = view.getUint32(offset + 12);
             const minimum = view.getUint32(offset + 16);
             offset += 20;
-            data = { mname: mname.name, rname: rname.name, serial, refresh, retry, expire, minimum };
+            data = [
+                {key: 'mname', value: mname.name},
+                {key: 'rname', value: rname.name},
+                {key: 'serial', value: serial},
+                {key: 'refresh', value: refresh},
+                {key: 'retry', value: retry},
+                {key: 'expire', value: expire},
+                {key: 'minimum', value: minimum}
+            ];
         } else if (type === 'MX') {
             const preference = view.getUint16(offset);
             offset += 2;
             const exchange = parseName(view, offset).name;
-            data = { preference, exchange };
+            data = [
+                {key: 'preference', value: preference},
+                {key: 'exchange', value: exchange}
+            ];
         } else if (type === 'AAAA') {
             if (dataLength !== 16) {
                 throw new Error('Invalid IPv6 byte array length.');
             }
-
             const bytes = new Uint8Array(view.buffer.slice(offset, offset + dataLength));
             const parts = [];
-
             for (let i = 0; i < 16; i += 2) {
                 const part = (bytes[i] << 8) | bytes[i + 1];
                 parts.push(part.toString(16));
             }
-
-            data = parts.join(':').replace(/(^|:)0(:0)*(:|$)/, '$1::$3').replace(/:{3,4}/, '::');
+            const ipv6 = parts.join(':').replace(/(^|:)0(:0)*(:|$)/, '$1::$3').replace(/:{3,4}/, '::');
+            data = [{key: 'ipv6', value: ipv6}];
         } else {
-            data = new TextDecoder().decode(view.buffer.slice(offset, offset + dataLength));
+            const text = new TextDecoder().decode(view.buffer.slice(offset, offset + dataLength));
+            data = [{key: 'text', value: text}];
         }
         offset += dataLength;
         answers.push({ name: name.name, type, clazz, ttl, data });
