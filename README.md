@@ -53,6 +53,72 @@ export const CLAZZ = Object.freeze({
     ANY: 255
 })
 ```
-
+The answer to a query can look like this, for example:
+```Json
+{
+    "message": {
+        "transactionID": 15136,
+        "flags": {
+            "qr": "RESPONSE",
+            "opcode": "QUERY",
+            "aa": 1,
+            "tc": 0,
+            "rd": 1,
+            "ra": 1,
+            "rcode": "NOERROR"
+        },
+        "qdcount": 1,
+        "ancount": 1,
+        "arcount": 0,
+        "adcount": 0,
+        "questions": [
+            {
+                "name": "dremaxx.de",
+                "type": "SOA",
+                "clazz": "IN"
+            }
+        ],
+        "answers": [
+            {
+                "name": "dremaxx.de",
+                "type": "SOA",
+                "clazz": "IN",
+                "ttl": 3600,
+                "data": [
+                    {
+                        "key": "mname",
+                        "value": "theo.dremaxx.de"
+                    },
+                    {
+                        "key": "rname",
+                        "value": "hostmaster.dremaxx.de"
+                    },
+                    {
+                        "key": "serial",
+                        "value": 2024112610
+                    },
+                    {
+                        "key": "refresh",
+                        "value": 3600
+                    },
+                    {
+                        "key": "retry",
+                        "value": 900
+                    },
+                    {
+                        "key": "expire",
+                        "value": 2419200
+                    },
+                    {
+                        "key": "minimum",
+                        "value": 3600
+                    }
+                ]
+            }
+        ]
+    },
+    "latency": 60
+}
+```
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request on GitHub.
