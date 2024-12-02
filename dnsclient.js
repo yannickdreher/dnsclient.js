@@ -1,33 +1,13 @@
-/* @preserve
- * File: dnsclient.js
- * Project: dnsclient.js
- * File Created: Friday, 29th November 2024 3:30:10 pm
- * Author: Yannick Dreher (yannick.dreher@dremaxx.de)
+/*
+ * Project:  dnsclient.js
+ * File:     dnsclient.js
+ * Author:   Yannick Dreher (yannick.dreher@dremaxx.de)
  * -----
- * Last Modified: Sunday, 1st December 2024 7:54:16 pm
+ * Created:  Monday, 2nd December 2024 9:08:42 am
+ * Modified: Monday, 2nd December 2024 10:13:00 am
  * -----
- * MIT License
- * 
- * Copyright (c) 2024 Yannick Dreher
- * 
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- * of the Software, and to permit persons to whom the Software is furnished to do
- * so, subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- * @endpreserve
+ * License: MIT License (https://opensource.org/licenses/MIT)
+ * Copyright © 2024 Yannick Dreher
  */
 
 // Enums
@@ -248,9 +228,12 @@ function parseResponseMessage(buffer) {
                 throw new Error('Invalid IPv4 byte array length.');
             }
             const ipv4 = new Uint8Array(view.buffer.slice(offset, offset + dataLength)).join('.');
+            offset += dataLength;
             data = [{key: 'ipv4', value: ipv4}];
         } else if (type === 'NS' || type === 'CNAME') {
-            data = [{key: 'name', value: parseName(view, offset).name}];
+            const value = parseName(view, offset);
+            offset = value.offset;
+            data = [{key: 'name', value: value.name}];
         } else if (type === 'SOA') {
             const mname = parseName(view, offset);
             offset = mname.offset;
@@ -274,16 +257,18 @@ function parseResponseMessage(buffer) {
         } else if (type === 'MX') {
             const preference = view.getUint16(offset);
             offset += 2;
-            const exchange = parseName(view, offset).name;
+            const exchange = parseName(view, offset);
+            offset = exchange.offset;
             data = [
                 {key: 'preference', value: preference},
-                {key: 'exchange', value: exchange}
+                {key: 'exchange', value: exchange.name}
             ];
         } else if (type === 'AAAA') {
             if (dataLength !== 16) {
                 throw new Error('Invalid IPv6 byte array length.');
             }
             const bytes = new Uint8Array(view.buffer.slice(offset, offset + dataLength));
+            offset += dataLength;
             const parts = [];
             for (let i = 0; i < 16; i += 2) {
                 const part = (bytes[i] << 8) | bytes[i + 1];
@@ -293,9 +278,10 @@ function parseResponseMessage(buffer) {
             data = [{key: 'ipv6', value: ipv6}];
         } else {
             const text = new TextDecoder().decode(view.buffer.slice(offset, offset + dataLength));
+            offset += dataLength;
             data = [{key: 'text', value: text}];
         }
-        offset += dataLength;
+
         answers.push({ name: name.name, type, clazz, ttl, data });
     }
 
