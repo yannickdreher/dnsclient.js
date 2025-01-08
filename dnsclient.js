@@ -228,9 +228,12 @@ function parseResponseMessage(buffer) {
                 throw new Error('Invalid IPv4 byte array length.');
             }
             const ipv4 = new Uint8Array(view.buffer.slice(offset, offset + dataLength)).join('.');
+            offset += dataLength;
             data = [{key: 'ipv4', value: ipv4}];
         } else if (type === 'NS' || type === 'CNAME') {
-            data = [{key: 'name', value: parseName(view, offset).name}];
+            const value = parseName(view, offset);
+            offset = value.offset;
+            data = [{key: 'name', value: value.name}];
         } else if (type === 'SOA') {
             const mname = parseName(view, offset);
             offset = mname.offset;
@@ -254,16 +257,18 @@ function parseResponseMessage(buffer) {
         } else if (type === 'MX') {
             const preference = view.getUint16(offset);
             offset += 2;
-            const exchange = parseName(view, offset).name;
+            const exchange = parseName(view, offset);
+            offset = exchange.offset;
             data = [
                 {key: 'preference', value: preference},
-                {key: 'exchange', value: exchange}
+                {key: 'exchange', value: exchange.name}
             ];
         } else if (type === 'AAAA') {
             if (dataLength !== 16) {
                 throw new Error('Invalid IPv6 byte array length.');
             }
             const bytes = new Uint8Array(view.buffer.slice(offset, offset + dataLength));
+            offset += dataLength;
             const parts = [];
             for (let i = 0; i < 16; i += 2) {
                 const part = (bytes[i] << 8) | bytes[i + 1];
@@ -274,9 +279,10 @@ function parseResponseMessage(buffer) {
         } else {
             const length = view.getUint8(offset);
             const text = new TextDecoder().decode(view.buffer.slice(offset + 1, offset + 1 + length));
+            offset += dataLength;
             data = [{key: 'text', value: text}];
         }
-        offset += dataLength;
+
         answers.push({ name: name.name, type, clazz, ttl, data });
     }
 
