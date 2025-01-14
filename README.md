@@ -20,12 +20,12 @@ npm install dnsclient.js
 ## Usage
 
 ```JavaScript
-import * as DNS from './dnsclient.js';
+import * as DNS from './dnsclient.min.js';
 
 const question = new DNS.Question(<domainname>, DNS.TYPE.A, DNS.CLAZZ.IN);
 
 try {
-    const result = await DNS.query('https://<hostname>/dns-query', question);
+    const result = await DNS.query('https://dns.dremaxx.de/dns-query', question);
     console.log(result);
 } catch {
     console.log('Error in DNS query.');
@@ -41,7 +41,8 @@ export const TYPE = Object.freeze({
     SOA: 6,
     MX: 15,
     TXT: 16,
-    AAAA: 28
+    AAAA: 28,
+    ANY: 255
 });
 
 export const CLAZZ = Object.freeze({
