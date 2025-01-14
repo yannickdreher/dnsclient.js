@@ -4,7 +4,7 @@
  * Author:   Yannick Dreher (yannick.dreher@dremaxx.de)
  * -----
  * Created:  Friday, 29th November 2024 3:30:10 pm
- * Modified: Wednesday, 8th January 2025 5:33:59 pm
+ * Modified: Tuesday, 14th January 2025 5:04:45 pm
  * -----
  * License: MIT License (https://opensource.org/licenses/MIT)
  * Copyright © 2024-2025 Yannick Dreher
@@ -156,7 +156,8 @@ export const TYPE = Object.freeze({
     SOA: 6,
     MX: 15,
     TXT: 16,
-    AAAA: 28
+    AAAA: 28,
+    ANY: 255
 });
 
 export const CLAZZ = Object.freeze({
@@ -276,11 +277,14 @@ function parseResponseMessage(buffer) {
             }
             const ipv6 = parts.join(':').replace(/(^|:)0(:0)*(:|$)/, '$1::$3').replace(/:{3,4}/, '::');
             data = [{key: 'ipv6', value: ipv6}];
-        } else {
+        } else if (type === 'TXT') {
             const length = view.getUint8(offset);
             const text = new TextDecoder().decode(view.buffer.slice(offset + 1, offset + 1 + length));
             offset += dataLength;
             data = [{key: 'text', value: text}];
+        } else {
+            offset += dataLength;
+            data = [{key: 'info', value: 'this RR type is not yet taken into account by dnsclient.js in response parsing.'}];
         }
 
         answers.push({ name: name.name, type, clazz, ttl, data });
