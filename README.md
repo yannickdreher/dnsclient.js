@@ -1,3 +1,5 @@
+[![Tests](https://github.com/yannickdreher/dnsclient.js/actions/workflows/tests.yml/badge.svg)](https://github.com/yannickdreher/dnsclient.js/actions/workflows/tests.yml)
+
 # dnsclient.js
 
 `dnsclient.js` is a JavaScript library for performing DNS queries over HTTPS.
