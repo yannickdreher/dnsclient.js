@@ -1,4 +1,5 @@
 [![Tests](https://github.com/yannickdreher/dnsclient.js/actions/workflows/tests.yml/badge.svg)](https://github.com/yannickdreher/dnsclient.js/actions/workflows/tests.yml)
+[![jsDelivr](https://data.jsdelivr.com/v1/package/npm/dnsclient.js/badge)](https://www.jsdelivr.com/package/npm/dnsclient.js)
 
 # dnsclient.js
 
@@ -17,6 +18,10 @@ You can install `dnsclient.js` via npm:
 
 ```bash
 npm install dnsclient.js
+```
+or load it from CDN:
+```html
+<script type="module"> import dnsclient from https://cdn.jsdelivr.net/npm/dnsclient.js/+esm </script>
 ```
 
 ## Usage
