@@ -4,7 +4,7 @@
  * Author:   Yannick Dreher (yannick.dreher@dremaxx.de)
  * -----
  * Created:  Friday, 29th November 2024 3:30:10 pm
- * Modified: Tuesday, 4th February 2025 7:39:37 pm
+ * Modified: Tuesday, 4th February 2025 9:25:28 pm
  * -----
  * License: MIT License (https://opensource.org/licenses/MIT)
  * Copyright © 2024-2025 Yannick Dreher
@@ -157,6 +157,7 @@ export const TYPE = Object.freeze({
     MX: 15,
     TXT: 16,
     AAAA: 28,
+    RRSIG: 46,
     DNSKEY: 48,
     ANY: 255
 });
@@ -287,6 +288,29 @@ function parseResponseMessage(buffer) {
             const text = new TextDecoder().decode(view.buffer.slice(offset + 1, offset + 1 + length));
             offset += dataLength;
             data = [{key: 'text', value: text}];
+        } else if (type === 'RRSIG') {
+            const typeCovered = TYPE_NAMES[view.getUint16(offset)];
+            const algorithm = view.getUint8(offset + 2);
+            const labels = view.getUint8(offset + 3);
+            const originalTtl = view.getUint32(offset + 4);
+            const expiration = view.getUint32(offset + 8);
+            const inception = view.getUint32(offset + 12);
+            const keyTag = view.getUint16(offset + 16);
+            const signersName = parseName(view, offset + 18);
+            const signatureBuffer = view.buffer.slice(signersName.offset, signersName.offset + dataLength);
+            const signature = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)));
+            offset += dataLength;
+            data = [
+                {key: 'typeCovered', value: typeCovered},
+                {key: 'algorithm', value: algorithm},
+                {key: 'labels', value: labels},
+                {key: 'originalTtl', value: originalTtl},
+                {key: 'expiration', value: new Date(expiration * 1000)},
+                {key: 'inception', value: new Date(inception * 1000)},
+                {key: 'keyTag', value: keyTag},
+                {key: 'signersName', value: signersName.name},
+                {key: 'signature', value: signature}
+            ];
         } else if (type === 'DNSKEY') {
             let flag = view.getUint16(offset);
             switch (flag) {
