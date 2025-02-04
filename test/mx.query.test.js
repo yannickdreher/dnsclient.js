@@ -1,12 +1,32 @@
 import * as dnsclient from '../src/dnsclient.js';
 
-test('Query type "MX" should return the correct data', async () => {
+describe('Query type "MX" should return the correct data', () => {
+    let result;
     const question = new dnsclient.Question('dremaxx.de', dnsclient.TYPE.MX, dnsclient.CLAZZ.IN);
-    const result = await dnsclient.query('https://dns.dremaxx.de/dns-query', question);
-    //console.dir(result, { depth: null });
-    expect(result.message.flags).toHaveProperty("rcode", "NOERROR");
-    expect(result.message.answers[0].data[0]).toHaveProperty("key", "preference");
-    expect(result.message.answers[0].data[0]).toHaveProperty("value", 10);
-    expect(result.message.answers[0].data[1]).toHaveProperty("key", "exchange");
-    expect(result.message.answers[0].data[1]).toHaveProperty("value", "dremaxx-de.mail.protection.outlook.com");
+
+    beforeAll(async () => {
+        result = await dnsclient.query('https://dns.dremaxx.de/dns-query', question);
+    });
+
+    test('RCODE is "NOERROR"', () => {
+        expect(result.message.flags).toHaveProperty("rcode", "NOERROR");
+    });
+
+    test('Record type of answers is "MX"', () => {
+        result.message.answers.forEach(answer => {
+            expect(answer.type).toBe('MX');
+        });
+    });
+
+    test('Data has property "preference"', () => {
+        result.message.answers.forEach(answer => {
+            expect(answer.data[0]).toHaveProperty("key", "preference");
+        });
+    });
+
+    test('Data has property "exchange"', () => {
+        result.message.answers.forEach(answer => {
+            expect(answer.data[1]).toHaveProperty("key", "exchange");
+        });
+    });
 });

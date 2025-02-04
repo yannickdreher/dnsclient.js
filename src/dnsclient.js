@@ -157,6 +157,7 @@ export const TYPE = Object.freeze({
     MX: 15,
     TXT: 16,
     AAAA: 28,
+    DNSKEY: 48,
     ANY: 255
 });
 
@@ -179,6 +180,10 @@ export class Question {
 }
 
 // Functions
+function arrayBufferToBase64(buffer) {
+    return Buffer.from(buffer).toString('base64');
+}
+
 function parseHeaderFlags(buffer) {
     const qr = QR_NAMES[(buffer >> 15) & 1];
     const opcode = OPCODE_NAMES[(buffer >> 11) & 0xF];
@@ -209,7 +214,7 @@ function parseResponseMessage(buffer) {
         const clazz = CLASS_NAMES[view.getUint16(offset + 2)];
         offset += 4;
 
-        questions.push({ name: name.name, type, clazz, });
+        questions.push({ name: name.name, type, clazz });
     }
 
     const answers = [];
@@ -282,6 +287,28 @@ function parseResponseMessage(buffer) {
             const text = new TextDecoder().decode(view.buffer.slice(offset + 1, offset + 1 + length));
             offset += dataLength;
             data = [{key: 'text', value: text}];
+        } else if (type === 'DNSKEY') {
+            let flag = view.getUint16(offset);
+            switch (flag) {
+                case 256:
+                    flag = 'ZSK';
+                    break;
+                case 257:
+                    flag = 'KSK';
+                    break;
+                default:
+                    flag = 'unknown';
+            } 
+            const protocol = view.getUint8(offset + 2);
+            const algorithm = view.getUint8(offset + 3);
+            const publickey = arrayBufferToBase64(view.buffer.slice(offset + 4, offset + 68));
+            offset += dataLength;
+            data = [
+                {key: 'flag', value: flag},
+                {key: 'protocol', value: protocol},
+                {key: 'algorithm', value: algorithm},
+                {key: 'publickey', value: publickey}
+            ];
         } else {
             offset += dataLength;
             data = [{key: 'info', value: 'this RR type is not yet taken into account by dnsclient.js in response parsing.'}];

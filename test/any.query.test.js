@@ -1,8 +1,14 @@
 import * as dnsclient from '../src/dnsclient.js';
 
-test('Query type "ANY" should return the correct rcode', async () => {
+describe('Query type "ANY" should return the correct data', () => {
+    let result;
     const question = new dnsclient.Question('dremaxx.de', dnsclient.TYPE.ANY, dnsclient.CLAZZ.IN);
-    const result = await dnsclient.query('https://dns.dremaxx.de/dns-query', question);
-    //console.dir(result, { depth: null });
-    expect(result.message.flags).toHaveProperty("rcode", "NOERROR");
+
+    beforeAll(async () => {
+        result = await dnsclient.query('https://dns.dremaxx.de/dns-query', question);
+    });
+
+    test('RCODE is "NOERROR"', () => {
+        expect(result.message.flags).toHaveProperty("rcode", "NOERROR");
+    });
 });
