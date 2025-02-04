@@ -4,7 +4,7 @@
  * Author:   Yannick Dreher (yannick.dreher@dremaxx.de)
  * -----
  * Created:  Friday, 29th November 2024 3:30:10 pm
- * Modified: Tuesday, 14th January 2025 5:04:45 pm
+ * Modified: Tuesday, 4th February 2025 7:39:37 pm
  * -----
  * License: MIT License (https://opensource.org/licenses/MIT)
  * Copyright © 2024-2025 Yannick Dreher
