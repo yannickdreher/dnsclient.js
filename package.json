@@ -1,6 +1,6 @@
 {
   "name": "dnsclient.js",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "JavaScript library for performing DNS queries over HTTPS",
   "main": "src/dnsclient.min.js",
   "type": "module",
