@@ -24,7 +24,7 @@ jobs:
       run: npm install -g minify
 
     - name: Minify dnsclient.js
-      run: minify src/dnsclient.js -o dist/dnsclient.min.js
+      run: minify src/dnsclient.js --type js -o dist/dnsclient.min.js
 
     - name: Commit minified file
       run: |
