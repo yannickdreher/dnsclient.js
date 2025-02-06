@@ -157,7 +157,9 @@ export const TYPE = Object.freeze({
     MX: 15,
     TXT: 16,
     AAAA: 28,
+    SRV: 33,
     RRSIG: 46,
+    NSEC: 47,
     DNSKEY: 48,
     ANY: 255
 });
@@ -283,20 +285,32 @@ function parseResponseMessage(buffer) {
             }
             const ipv6 = parts.join(':').replace(/(^|:)0(:0)*(:|$)/, '$1::$3').replace(/:{3,4}/, '::');
             data = [{key: 'ipv6', value: ipv6}];
+        } else if (type === 'SRV') {
+            const priority = view.getUint16(offset  + 0);
+            const weight   = view.getUint16(offset  + 2);
+            const port     = view.getUint16(offset  + 4);
+            const target   = parseName(view, offset + 6);
+            offset += dataLength;
+            data = [
+                {key: 'priority', value: priority},
+                {key: 'weight', value: weight},
+                {key: 'port', value: port},
+                {key: 'target', value: target.name},
+            ];
         } else if (type === 'TXT') {
             const length = view.getUint8(offset);
             const text = new TextDecoder().decode(view.buffer.slice(offset + 1, offset + 1 + length));
             offset += dataLength;
             data = [{key: 'text', value: text}];
         } else if (type === 'RRSIG') {
-            const typeCovered = TYPE_NAMES[view.getUint16(offset)];
-            const algorithm = view.getUint8(offset + 2);
-            const labels = view.getUint8(offset + 3);
-            const originalTtl = view.getUint32(offset + 4);
-            const expiration = view.getUint32(offset + 8);
-            const inception = view.getUint32(offset + 12);
-            const keyTag = view.getUint16(offset + 16);
-            const signersName = parseName(view, offset + 18);
+            const typeCovered   = TYPE_NAMES[view.getUint16(offset)];
+            const algorithm     = view.getUint8(offset   +  2);
+            const labels        = view.getUint8(offset   +  3);
+            const originalTtl   = view.getUint32(offset  +  4);
+            const expiration    = view.getUint32(offset  +  8);
+            const inception     = view.getUint32(offset  + 12);
+            const keyTag        = view.getUint16(offset  + 16);
+            const signersName   = parseName(view, offset + 18);
             const signatureBuffer = view.buffer.slice(signersName.offset, signersName.offset + dataLength);
             const signature = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)));
             offset += dataLength;
@@ -311,6 +325,29 @@ function parseResponseMessage(buffer) {
                 {key: 'signersName', value: signersName.name},
                 {key: 'signature', value: signature}
             ];
+        } else if (type === 'NSEC') {
+            const nextDomain  = parseName(view, offset);
+            offset += nextDomain.length;
+            const maxOffset = offset + dataLength - nextDomain.length;
+            const typeBitmaps = [];
+            while (offset < maxOffset) {
+                const blockNumber = view.getUint8(offset++);
+                const blockLength = view.getUint8(offset++);
+
+                for (let i = 0; i < blockLength; i++) {
+                    const byte = view.getUint8(offset++);
+                    for (let bit = 0; bit < 8; bit++) {
+                        if (byte & (1 << (7 - bit))) {
+                            const rrType = (blockNumber * 256) + (i * 8) + bit;
+                            typeBitmaps.push(TYPE_NAMES[rrType]);
+                        }
+                    }
+                }
+            }
+            data = [
+                {key: 'nextDomain', value: nextDomain.name},
+                {key: 'typeBitmaps', value: typeBitmaps}
+            ];
         } else if (type === 'DNSKEY') {
             let flag = view.getUint16(offset);
             switch (flag) {
@@ -323,7 +360,7 @@ function parseResponseMessage(buffer) {
                 default:
                     flag = 'unknown';
             } 
-            const protocol = view.getUint8(offset + 2);
+            const protocol  = view.getUint8(offset + 2);
             const algorithm = view.getUint8(offset + 3);
             const publickey = arrayBufferToBase64(view.buffer.slice(offset + 4, offset + 68));
             offset += dataLength;
@@ -335,7 +372,7 @@ function parseResponseMessage(buffer) {
             ];
         } else {
             offset += dataLength;
-            data = [{key: 'info', value: 'this RR type is not yet taken into account by dnsclient.js in response parsing.'}];
+            data = [{key: 'info', value: 'this RR type is not yet taken into account by dnsclient.js.'}];
         }
 
         answers.push({ name: name.name, type, clazz, ttl, data });
@@ -380,6 +417,7 @@ function parseName(view, offset) {
     let length = view.getUint8(offset);
     let jumped = false;
     let jumpOffset = 0;
+    let initialOffset = offset;
 
     while (length !== 0) {
         if ((length & 0xc0) === 0xc0) {
@@ -402,8 +440,8 @@ function parseName(view, offset) {
     if (!jumped) {
         jumpOffset = offset + 1;
     }
-    
-    return { name: labels.join("."), offset: jumpOffset };
+
+    return { name: labels.join("."), offset: jumpOffset, length: jumpOffset - initialOffset };
 }
 
 export async function query(url, question) {
