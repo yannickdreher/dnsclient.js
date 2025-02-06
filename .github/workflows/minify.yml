@@ -22,14 +22,11 @@ jobs:
       with:
         node-version: '22'
 
-    - name: List files
-      run: ls -la
-
     - name: Install minify
       run: npm install -g minify
 
     - name: Minify dnsclient.js
-      run: minify --js src/dnsclient.js > dist/dnsclient.min.js
+      run: minify src/dnsclient.js > dist/dnsclient.min.js
 
     - name: Commit minified file
       run: |
