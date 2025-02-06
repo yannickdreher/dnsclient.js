@@ -1,4 +1,4 @@
-import * as dnsclient from '../src/dnsclient.min.js';
+import * as dnsclient from '../src/dnsclient.js';
 import net from "net";
 
 describe('Query type "A" should return the correct data', () => {
