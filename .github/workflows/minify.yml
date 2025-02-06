@@ -6,22 +6,28 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  minify:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          ref: ${{ github.ref }}
 
-      - name: Minify
-        uses: jossydevers/minify-js@v1.0.1
-        with:
-          directory: 'src/dnsclient.js'
-          output: 'src/'
-          
-      - uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_message: 'minifyed'
-          branch: ${{ github.ref }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - name: Install minify
+      run: npm install -g minify
+
+    - name: Minify dnsclient.js
+      run: minify src/dnsclient.js -o dist/dnsclient.min.js
+
+    - name: Commit minified file
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add dist/dnsclient.min.js
+        git commit -m "Minify dnsclient.js [CI Skip]" || echo "No changes to commit"
+        git push
