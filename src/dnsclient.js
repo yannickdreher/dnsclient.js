@@ -198,6 +198,170 @@ function parseHeaderFlags(buffer) {
     return {qr, opcode, aa, tc, rd, ra, rcode};
 }
 
+function parseARecord(view, offset, dataLength){
+    if (dataLength !== 4) {
+        throw new Error('Invalid IPv4 byte array length.');
+    }
+    const ipv4 = new Uint8Array(view.buffer.slice(offset, offset + dataLength)).join('.');
+    const data = [{key: 'ipv4', value: ipv4}];
+    return data;
+}
+
+function parseNSRecord(view, offset) {
+    const value = parseName(view, offset);
+    const data  = [{key: 'name', value: value.name}];
+    return data;
+}
+
+function parseCNAMERecord(view, offset) {
+    const value = parseName(view, offset);
+    const data = [{key: 'name', value: value.name}];
+    return data;
+}
+
+function parseSOARecord(view, offset) {
+    const mname = parseName(view, offset);
+    offset = mname.offset;
+    const rname = parseName(view, offset);
+    offset = rname.offset;
+    const serial  = view.getUint32(offset +  0);
+    const refresh = view.getUint32(offset +  4);
+    const retry   = view.getUint32(offset +  8);
+    const expire  = view.getUint32(offset + 12);
+    const minimum = view.getUint32(offset + 16);
+    const data = [
+        {key: 'mname', value: mname.name},
+        {key: 'rname', value: rname.name},
+        {key: 'serial', value: serial},
+        {key: 'refresh', value: refresh},
+        {key: 'retry', value: retry},
+        {key: 'expire', value: expire},
+        {key: 'minimum', value: minimum}
+    ];
+    return data;
+}
+
+function parseMXRecordData(view, offset) {
+    const preference = view.getUint16(offset);
+    const exchange   = parseName(view, offset + 2);
+    const data = [
+        {key: 'preference', value: preference},
+        {key: 'exchange', value: exchange.name}
+    ];
+    return data;
+}
+
+function parseAAAARecordData(view, offset, dataLength) {
+    if (dataLength !== 16) {
+        throw new Error('Invalid IPv6 byte array length.');
+    }
+    const bytes = new Uint8Array(view.buffer.slice(offset, offset + dataLength));
+    const parts = [];
+    for (let i = 0; i < 16; i += 2) {
+        const part = (bytes[i] << 8) | bytes[i + 1];
+        parts.push(part.toString(16));
+    }
+    const ipv6 = parts.join(':').replace(/(^|:)0(:0)*(:|$)/, '$1::$3').replace(/:{3,4}/, '::');
+    const data = [{key: 'ipv6', value: ipv6}];
+    return data;
+}
+
+function parseSRVRecordData(view, offset) {
+    const priority = view.getUint16(offset  + 0);
+    const weight   = view.getUint16(offset  + 2);
+    const port     = view.getUint16(offset  + 4);
+    const target   = parseName(view, offset + 6);
+    const data = [
+        {key: 'priority', value: priority},
+        {key: 'weight', value: weight},
+        {key: 'port', value: port},
+        {key: 'target', value: target.name},
+    ];
+    return data;
+}
+
+function parseTXTRecordData(view, offset) {
+    const length = view.getUint8(offset);
+    const text   = new TextDecoder().decode(view.buffer.slice(offset + 1, offset + 1 + length));
+    const data   = [{key: 'text', value: text}];
+    return data;
+}
+
+function parseRRSIGRecordData(view, offset, dataLength) {
+    const typeCovered   = TYPE_NAMES[view.getUint16(offset)];
+    const algorithm     = view.getUint8(offset   +  2);
+    const labels        = view.getUint8(offset   +  3);
+    const originalTtl   = view.getUint32(offset  +  4);
+    const expiration    = view.getUint32(offset  +  8);
+    const inception     = view.getUint32(offset  + 12);
+    const keyTag        = view.getUint16(offset  + 16);
+    const signersName   = parseName(view, offset + 18);
+    const buffer        = view.buffer.slice(signersName.offset, signersName.offset + dataLength);
+    const signature     = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    const data = [
+        {key: 'typeCovered', value: typeCovered},
+        {key: 'algorithm', value: algorithm},
+        {key: 'labels', value: labels},
+        {key: 'originalTtl', value: originalTtl},
+        {key: 'expiration', value: new Date(expiration * 1000)},
+        {key: 'inception', value: new Date(inception * 1000)},
+        {key: 'keyTag', value: keyTag},
+        {key: 'signersName', value: signersName.name},
+        {key: 'signature', value: signature}
+    ];
+    return data;
+}
+
+function parseNSECRecordData(view, offset, dataLength) {
+    const nextDomain  = parseName(view, offset);
+    offset += nextDomain.length;
+    const maxOffset = offset + dataLength - nextDomain.length;
+    const typeBitmaps = [];
+    while (offset < maxOffset) {
+        const blockNumber = view.getUint8(offset++);
+        const blockLength = view.getUint8(offset++);
+
+        for (let i = 0; i < blockLength; i++) {
+            const byte = view.getUint8(offset++);
+            for (let bit = 0; bit < 8; bit++) {
+                if (byte & (1 << (7 - bit))) {
+                    const rrType = (blockNumber * 256) + (i * 8) + bit;
+                    typeBitmaps.push(TYPE_NAMES[rrType]);
+                }
+            }
+        }
+    }
+    const data = [
+        {key: 'nextDomain', value: nextDomain.name},
+        {key: 'typeBitmaps', value: typeBitmaps}
+    ];
+    return data;
+}
+
+function parseDNSKEYRecordData(view, offset) {
+    let flag = view.getUint16(offset);
+    switch (flag) {
+        case 256:
+            flag = 'ZSK';
+            break;
+        case 257:
+            flag = 'KSK';
+            break;
+        default:
+            flag = 'unknown';
+    } 
+    const protocol  = view.getUint8(offset + 2);
+    const algorithm = view.getUint8(offset + 3);
+    const publickey = arrayBufferToBase64(view.buffer.slice(offset + 4, offset + 68));
+    const data = [
+        {key: 'flag', value: flag},
+        {key: 'protocol', value: protocol},
+        {key: 'algorithm', value: algorithm},
+        {key: 'publickey', value: publickey}
+    ];
+    return data;
+}
+
 function parseResponseMessage(buffer) {
     const view = new DataView(buffer);
     const transactionID = view.getUint16(0);
@@ -232,149 +396,45 @@ function parseResponseMessage(buffer) {
         offset += 10;
 
         let data = [{key: '', value: ''}];
-        if (type === 'A') {
-            if (dataLength !== 4) {
-                throw new Error('Invalid IPv4 byte array length.');
-            }
-            const ipv4 = new Uint8Array(view.buffer.slice(offset, offset + dataLength)).join('.');
-            offset += dataLength;
-            data = [{key: 'ipv4', value: ipv4}];
-        } else if (type === 'NS' || type === 'CNAME') {
-            const value = parseName(view, offset);
-            offset = value.offset;
-            data = [{key: 'name', value: value.name}];
-        } else if (type === 'SOA') {
-            const mname = parseName(view, offset);
-            offset = mname.offset;
-            const rname = parseName(view, offset);
-            offset = rname.offset;
-            const serial  = view.getUint32(offset +  0);
-            const refresh = view.getUint32(offset +  4);
-            const retry   = view.getUint32(offset +  8);
-            const expire  = view.getUint32(offset + 12);
-            const minimum = view.getUint32(offset + 16);
-            offset += 20;
-            data = [
-                {key: 'mname', value: mname.name},
-                {key: 'rname', value: rname.name},
-                {key: 'serial', value: serial},
-                {key: 'refresh', value: refresh},
-                {key: 'retry', value: retry},
-                {key: 'expire', value: expire},
-                {key: 'minimum', value: minimum}
-            ];
-        } else if (type === 'MX') {
-            const preference = view.getUint16(offset);
-            offset += 2;
-            const exchange = parseName(view, offset);
-            offset = exchange.offset;
-            data = [
-                {key: 'preference', value: preference},
-                {key: 'exchange', value: exchange.name}
-            ];
-        } else if (type === 'AAAA') {
-            if (dataLength !== 16) {
-                throw new Error('Invalid IPv6 byte array length.');
-            }
-            const bytes = new Uint8Array(view.buffer.slice(offset, offset + dataLength));
-            offset += dataLength;
-            const parts = [];
-            for (let i = 0; i < 16; i += 2) {
-                const part = (bytes[i] << 8) | bytes[i + 1];
-                parts.push(part.toString(16));
-            }
-            const ipv6 = parts.join(':').replace(/(^|:)0(:0)*(:|$)/, '$1::$3').replace(/:{3,4}/, '::');
-            data = [{key: 'ipv6', value: ipv6}];
-        } else if (type === 'SRV') {
-            const priority = view.getUint16(offset  + 0);
-            const weight   = view.getUint16(offset  + 2);
-            const port     = view.getUint16(offset  + 4);
-            const target   = parseName(view, offset + 6);
-            offset += dataLength;
-            data = [
-                {key: 'priority', value: priority},
-                {key: 'weight', value: weight},
-                {key: 'port', value: port},
-                {key: 'target', value: target.name},
-            ];
-        } else if (type === 'TXT') {
-            const length = view.getUint8(offset);
-            const text = new TextDecoder().decode(view.buffer.slice(offset + 1, offset + 1 + length));
-            offset += dataLength;
-            data = [{key: 'text', value: text}];
-        } else if (type === 'RRSIG') {
-            const typeCovered   = TYPE_NAMES[view.getUint16(offset)];
-            const algorithm     = view.getUint8(offset   +  2);
-            const labels        = view.getUint8(offset   +  3);
-            const originalTtl   = view.getUint32(offset  +  4);
-            const expiration    = view.getUint32(offset  +  8);
-            const inception     = view.getUint32(offset  + 12);
-            const keyTag        = view.getUint16(offset  + 16);
-            const signersName   = parseName(view, offset + 18);
-            const signatureBuffer = view.buffer.slice(signersName.offset, signersName.offset + dataLength);
-            const signature = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)));
-            offset += dataLength;
-            data = [
-                {key: 'typeCovered', value: typeCovered},
-                {key: 'algorithm', value: algorithm},
-                {key: 'labels', value: labels},
-                {key: 'originalTtl', value: originalTtl},
-                {key: 'expiration', value: new Date(expiration * 1000)},
-                {key: 'inception', value: new Date(inception * 1000)},
-                {key: 'keyTag', value: keyTag},
-                {key: 'signersName', value: signersName.name},
-                {key: 'signature', value: signature}
-            ];
-        } else if (type === 'NSEC') {
-            const nextDomain  = parseName(view, offset);
-            offset += nextDomain.length;
-            const maxOffset = offset + dataLength - nextDomain.length;
-            const typeBitmaps = [];
-            while (offset < maxOffset) {
-                const blockNumber = view.getUint8(offset++);
-                const blockLength = view.getUint8(offset++);
-
-                for (let i = 0; i < blockLength; i++) {
-                    const byte = view.getUint8(offset++);
-                    for (let bit = 0; bit < 8; bit++) {
-                        if (byte & (1 << (7 - bit))) {
-                            const rrType = (blockNumber * 256) + (i * 8) + bit;
-                            typeBitmaps.push(TYPE_NAMES[rrType]);
-                        }
-                    }
-                }
-            }
-            data = [
-                {key: 'nextDomain', value: nextDomain.name},
-                {key: 'typeBitmaps', value: typeBitmaps}
-            ];
-        } else if (type === 'DNSKEY') {
-            let flag = view.getUint16(offset);
-            switch (flag) {
-                case 256:
-                    flag = 'ZSK';
-                    break;
-                case 257:
-                    flag = 'KSK';
-                    break;
-                default:
-                    flag = 'unknown';
-            } 
-            const protocol  = view.getUint8(offset + 2);
-            const algorithm = view.getUint8(offset + 3);
-            const publickey = arrayBufferToBase64(view.buffer.slice(offset + 4, offset + 68));
-            offset += dataLength;
-            data = [
-                {key: 'flag', value: flag},
-                {key: 'protocol', value: protocol},
-                {key: 'algorithm', value: algorithm},
-                {key: 'publickey', value: publickey}
-            ];
-        } else {
-            offset += dataLength;
-            data = [{key: 'info', value: 'this RR type is not yet taken into account by dnsclient.js.'}];
+        switch (type) {
+            case 'A':
+                data = parseARecord(view, offset, dataLength);
+                break;
+            case 'NS':
+                data = parseNSRecord(view, offset);
+                break;
+            case 'CNAME':
+                data = parseCNAMERecord(view, offset);
+                break;
+            case 'SOA':
+                data = parseSOARecord(view, offset);
+                break;
+            case 'MX':
+                data = parseMXRecordData(view, offset);
+                break;
+            case 'AAAA':
+                data = parseAAAARecordData(view, offset, dataLength);
+                break;
+            case 'SRV':
+                data = parseSRVRecordData(view, offset);
+                break;
+            case 'TXT':
+                data = parseTXTRecordData(view, offset);
+                break;
+            case 'RRSIG':
+                data = parseRRSIGRecordData(view, offset, dataLength);
+                break;
+            case 'NSEC':
+                data = parseNSECRecordData(view, offset, dataLength);
+                break;
+            case 'DNSKEY':
+                data = parseDNSKEYRecordData(view, offset);
+                break;
+            default:
+                data = [{key: 'info', value: 'this RR type is not yet taken into account by dnsclient.js.'}];
         }
 
+        offset += dataLength;
         answers.push({ name: name.name, type, clazz, ttl, data });
     }
 
@@ -383,7 +443,7 @@ function parseResponseMessage(buffer) {
 
 function parseQueryMessage(question) {
     const transactionId = crypto.getRandomValues(new Uint8Array(2));
-    const flags = new Uint8Array([0x01, 0x00]);
+    const flags   = new Uint8Array([0x01, 0x00]);
     const qdcount = new Uint8Array([0x00, 0x01]);
 
     // Split domain name into labels (z.B. "example.com" -> [7, 'example', 3, 'com', 0])
