@@ -1,4 +1,6 @@
 [![Tests](https://github.com/yannickdreher/dnsclient.js/actions/workflows/tests.yml/badge.svg)](https://github.com/yannickdreher/dnsclient.js/actions/workflows/tests.yml)
+[![Minify](https://github.com/yannickdreher/dnsclient.js/actions/workflows/minify.yml/badge.svg)](https://github.com/yannickdreher/dnsclient.js/actions/workflows/minify.yml)
+[![Publish](https://github.com/yannickdreher/dnsclient.js/actions/workflows/publish.yml/badge.svg)](https://github.com/yannickdreher/dnsclient.js/actions/workflows/publish.yml)
 [![jsDelivr](https://data.jsdelivr.com/v1/package/npm/dnsclient.js/badge)](https://www.jsdelivr.com/package/npm/dnsclient.js)
 
 # dnsclient.js
@@ -49,8 +51,13 @@ export const TYPE = Object.freeze({
     MX: 15,
     TXT: 16,
     AAAA: 28,
+    SRV: 33,
+    DS: 43,
     RRSIG: 46,
+    NSEC: 47,
     DNSKEY: 48,
+    CDS: 59,
+    CDNSKEY: 60,
     ANY: 255
 });
 
