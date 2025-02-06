@@ -23,10 +23,10 @@ jobs:
         node-version: '22'
 
     - name: Install minify
-      run: npm install -g minify
+      run: npm install -g terser
 
     - name: Minify dnsclient.js
-      run: minify src/dnsclient.js > dist/dnsclient.min.js
+      run: terser src/dnsclient.js --compress --mangle --output dist/
 
     - name: Commit minified file
       run: |

@@ -4,7 +4,7 @@
  * Author:   Yannick Dreher (yannick.dreher@dremaxx.de)
  * -----
  * Created:  Friday, 29th November 2024 3:30:10 pm
- * Modified: Thursday, 6th February 2025 6:20:14 pm
+ * Modified: Thursday, 6th February 2025 7:09:50 pm
  * -----
  * License: MIT License (https://opensource.org/licenses/MIT)
  * Copyright © 2024-2025 Yannick Dreher
@@ -12,141 +12,141 @@
 
 // Enums
 const QR_NAMES = Object.freeze({
-    0: 'QUERY',
-    1: 'RESPONSE'
+    0: "QUERY",
+    1: "RESPONSE"
 });
 
 const OPCODE_NAMES = Object.freeze({
-    0: 'QUERY',    // Standard query
-    1: 'IQUERY',   // Inverse query (obsolete)
-    2: 'STATUS',   // Server status request
-    3: 'RESERVED', // Reserved for future use
-    4: 'NOTIFY',   // Notify request
-    5: 'UPDATE',   // Dynamic update
-    6: 'DSO'       // DNS Stateful Operations
+    0: "QUERY",    // Standard query
+    1: "IQUERY",   // Inverse query (obsolete)
+    2: "STATUS",   // Server status request
+    3: "RESERVED", // Reserved for future use
+    4: "NOTIFY",   // Notify request
+    5: "UPDATE",   // Dynamic update
+    6: "DSO"       // DNS Stateful Operations
 });
 
 const RCODE_NAMES = Object.freeze({
-    0: 'NOERROR',    // DNS Query completed successfully
-    1: 'FORMERR',    // DNS Query Format Error
-    2: 'SERVFAIL',   // Server failed to complete the DNS request
-    3: 'NXDOMAIN',   // Domain name does not exist
-    4: 'NOTIMP',     // Function not implemented
-    5: 'REFUSED',    // The server refused to answer for the query
-    6: 'YXDOMAIN',   // Name that should not exist, does exist
-    7: 'XRRSET',     // RRset that should not exist, does exist
-    8: 'NOTAUTH',    // Server not authoritative for the zone
-    9: 'NOTZONE',    // Name not in zone
-    10: 'BADVERS',   // Bad OPT Version
-    11: 'BADSIG',    // TSIG Signature Failure
-    12: 'BADKEY',    // Key not recognized
-    13: 'BADTIME',   // Signature out of time window
-    14: 'BADMODE',   // Bad TKEY Mode
-    15: 'BADNAME',   // Duplicate key name
-    16: 'BADALG',    // Algorithm not supported
-    17: 'BADTRUNC',  // Bad truncation
-    18: 'BADCOOKIE'  // Bad/missing server cookie
+    0: "NOERROR",    // DNS Query completed successfully
+    1: "FORMERR",    // DNS Query Format Error
+    2: "SERVFAIL",   // Server failed to complete the DNS request
+    3: "NXDOMAIN",   // Domain name does not exist
+    4: "NOTIMP",     // Function not implemented
+    5: "REFUSED",    // The server refused to answer for the query
+    6: "YXDOMAIN",   // Name that should not exist, does exist
+    7: "XRRSET",     // RRset that should not exist, does exist
+    8: "NOTAUTH",    // Server not authoritative for the zone
+    9: "NOTZONE",    // Name not in zone
+    10: "BADVERS",   // Bad OPT Version
+    11: "BADSIG",    // TSIG Signature Failure
+    12: "BADKEY",    // Key not recognized
+    13: "BADTIME",   // Signature out of time window
+    14: "BADMODE",   // Bad TKEY Mode
+    15: "BADNAME",   // Duplicate key name
+    16: "BADALG",    // Algorithm not supported
+    17: "BADTRUNC",  // Bad truncation
+    18: "BADCOOKIE"  // Bad/missing server cookie
 });
 
 const TYPE_NAMES = Object.freeze({
-    1: 'A',
-    2: 'NS',
-    3: 'MD',
-    4: 'MF',
-    5: 'CNAME',
-    6: 'SOA',
-    7: 'MB',
-    8: 'MG',
-    9: 'MR',
-    10: 'NULL',
-    11: 'WKS',
-    12: 'PTR',
-    13: 'HINFO',
-    14: 'MINFO',
-    15: 'MX',
-    16: 'TXT',
-    17: 'RP',
-    18: 'AFSDB',
-    19: 'X25',
-    20: 'ISDN',
-    21: 'RT',
-    22: 'NSAP',
-    23: 'NSAP_PTR',
-    24: 'SIG',
-    25: 'KEY',
-    26: 'PX',
-    27: 'GPOS',
-    28: 'AAAA',
-    29: 'LOC',
-    30: 'NXT',
-    31: 'EID',
-    32: 'NIMLOC',
-    33: 'SRV',
-    34: 'ATMA',
-    35: 'NAPTR',
-    36: 'KX',
-    37: 'CERT',
-    38: 'A6',
-    39: 'DNAME',
-    40: 'SINK',
-    41: 'OPT',
-    42: 'APL',
-    43: 'DS',
-    44: 'SSHFP',
-    45: 'IPSECKEY',
-    46: 'RRSIG',
-    47: 'NSEC',
-    48: 'DNSKEY',
-    49: 'DHCID',
-    50: 'NSEC3',
-    51: 'NSEC3PARAM',
-    52: 'TLSA',
-    53: 'SMIMEA',
-    55: 'HIP',
-    56: 'NINFO',
-    57: 'RKEY',
-    58: 'TALINK',
-    59: 'CDS',
-    60: 'CDNSKEY',
-    61: 'OPENPGPKEY',
-    62: 'CSYNC',
-    63: 'ZONEMD',
-    64: 'SVCB',
-    65: 'HTTPS',
-    99: 'SPF',
-    100: 'UINFO',
-    101: 'UID',
-    102: 'GID',
-    103: 'UNSPEC',
-    104: 'NID',
-    105: 'L32',
-    106: 'L64',
-    107: 'LP',
-    108: 'EUI48',
-    109: 'EUI64',
-    249: 'TKEY',
-    250: 'TSIG',
-    251: 'IXFR',
-    252: 'AXFR',
-    253: 'MAILB',
-    254: 'MAILA',
-    255: 'ANY',
-    256: 'URI',
-    257: 'CAA',
-    258: 'AVC',
-    259: 'DOA',
-    260: 'AMTRELAY',
-    32768: 'TA',
-    32769: 'DLV'
+    1: "A",
+    2: "NS",
+    3: "MD",
+    4: "MF",
+    5: "CNAME",
+    6: "SOA",
+    7: "MB",
+    8: "MG",
+    9: "MR",
+    10: "NULL",
+    11: "WKS",
+    12: "PTR",
+    13: "HINFO",
+    14: "MINFO",
+    15: "MX",
+    16: "TXT",
+    17: "RP",
+    18: "AFSDB",
+    19: "X25",
+    20: "ISDN",
+    21: "RT",
+    22: "NSAP",
+    23: "NSAP_PTR",
+    24: "SIG",
+    25: "KEY",
+    26: "PX",
+    27: "GPOS",
+    28: "AAAA",
+    29: "LOC",
+    30: "NXT",
+    31: "EID",
+    32: "NIMLOC",
+    33: "SRV",
+    34: "ATMA",
+    35: "NAPTR",
+    36: "KX",
+    37: "CERT",
+    38: "A6",
+    39: "DNAME",
+    40: "SINK",
+    41: "OPT",
+    42: "APL",
+    43: "DS",
+    44: "SSHFP",
+    45: "IPSECKEY",
+    46: "RRSIG",
+    47: "NSEC",
+    48: "DNSKEY",
+    49: "DHCID",
+    50: "NSEC3",
+    51: "NSEC3PARAM",
+    52: "TLSA",
+    53: "SMIMEA",
+    55: "HIP",
+    56: "NINFO",
+    57: "RKEY",
+    58: "TALINK",
+    59: "CDS",
+    60: "CDNSKEY",
+    61: "OPENPGPKEY",
+    62: "CSYNC",
+    63: "ZONEMD",
+    64: "SVCB",
+    65: "HTTPS",
+    99: "SPF",
+    100: "UINFO",
+    101: "UID",
+    102: "GID",
+    103: "UNSPEC",
+    104: "NID",
+    105: "L32",
+    106: "L64",
+    107: "LP",
+    108: "EUI48",
+    109: "EUI64",
+    249: "TKEY",
+    250: "TSIG",
+    251: "IXFR",
+    252: "AXFR",
+    253: "MAILB",
+    254: "MAILA",
+    255: "ANY",
+    256: "URI",
+    257: "CAA",
+    258: "AVC",
+    259: "DOA",
+    260: "AMTRELAY",
+    32768: "TA",
+    32769: "DLV"
 });
 
 const CLASS_NAMES = Object.freeze({
-    1: 'IN',       // Internet
-    2: 'CS',       // CSNET (obsolete)
-    3: 'CH',       // CHAOS
-    4: 'HS',       // Hesiod
-    254: 'NONE',   // QCLASS NONE
-    255: 'ANY'     // QCLASS ANY
+    1: "IN",       // Internet
+    2: "CS",       // CSNET (obsolete)
+    3: "CH",       // CHAOS
+    4: "HS",       // Hesiod
+    254: "NONE",   // QCLASS NONE
+    255: "ANY"     // QCLASS ANY
 });
 
 export const TYPE = Object.freeze({
@@ -186,10 +186,6 @@ export class Question {
 }
 
 // Functions
-function arrayBufferToBase64(buffer) {
-    return Buffer.from(buffer).toString('base64');
-}
-
 function parseHeaderFlags(buffer) {
     const qr = QR_NAMES[(buffer >> 15) & 1];
     const opcode = OPCODE_NAMES[(buffer >> 11) & 0xF];
@@ -203,22 +199,22 @@ function parseHeaderFlags(buffer) {
 
 function parseARecord(view, offset, dataLength){
     if (dataLength !== 4) {
-        throw new Error('Invalid IPv4 byte array length.');
+        throw new Error("Invalid IPv4 byte array length.");
     }
-    const ipv4 = new Uint8Array(view.buffer.slice(offset, offset + dataLength)).join('.');
-    const data = [{key: 'ipv4', value: ipv4}];
+    const ipv4 = new Uint8Array(view.buffer.slice(offset, offset + dataLength)).join(".");
+    const data = [{key: "ipv4", value: ipv4}];
     return data;
 }
 
 function parseNSRecord(view, offset) {
     const value = parseName(view, offset);
-    const data  = [{key: 'name', value: value.name}];
+    const data  = [{key: "name", value: value.name}];
     return data;
 }
 
 function parseCNAMERecord(view, offset) {
     const value = parseName(view, offset);
-    const data = [{key: 'name', value: value.name}];
+    const data = [{key: "name", value: value.name}];
     return data;
 }
 
@@ -233,13 +229,13 @@ function parseSOARecord(view, offset) {
     const expire  = view.getUint32(offset + 12);
     const minimum = view.getUint32(offset + 16);
     const data = [
-        {key: 'mname', value: mname.name},
-        {key: 'rname', value: rname.name},
-        {key: 'serial', value: serial},
-        {key: 'refresh', value: refresh},
-        {key: 'retry', value: retry},
-        {key: 'expire', value: expire},
-        {key: 'minimum', value: minimum}
+        {key: "mname", value: mname.name},
+        {key: "rname", value: rname.name},
+        {key: "serial", value: serial},
+        {key: "refresh", value: refresh},
+        {key: "retry", value: retry},
+        {key: "expire", value: expire},
+        {key: "minimum", value: minimum}
     ];
     return data;
 }
@@ -248,15 +244,15 @@ function parseMXRecordData(view, offset) {
     const preference = view.getUint16(offset);
     const exchange   = parseName(view, offset + 2);
     const data = [
-        {key: 'preference', value: preference},
-        {key: 'exchange', value: exchange.name}
+        {key: "preference", value: preference},
+        {key: "exchange", value: exchange.name}
     ];
     return data;
 }
 
 function parseAAAARecordData(view, offset, dataLength) {
     if (dataLength !== 16) {
-        throw new Error('Invalid IPv6 byte array length.');
+        throw new Error("Invalid IPv6 byte array length.");
     }
     const bytes = new Uint8Array(view.buffer.slice(offset, offset + dataLength));
     const parts = [];
@@ -264,8 +260,8 @@ function parseAAAARecordData(view, offset, dataLength) {
         const part = (bytes[i] << 8) | bytes[i + 1];
         parts.push(part.toString(16));
     }
-    const ipv6 = parts.join(':').replace(/(^|:)0(:0)*(:|$)/, '$1::$3').replace(/:{3,4}/, '::');
-    const data = [{key: 'ipv6', value: ipv6}];
+    const ipv6 = parts.join(":").replace(/(^|:)0(:0)*(:|$)/, "$1::$3").replace(/:{3,4}/, "::");
+    const data = [{key: "ipv6", value: ipv6}];
     return data;
 }
 
@@ -275,10 +271,10 @@ function parseSRVRecordData(view, offset) {
     const port     = view.getUint16(offset  + 4);
     const target   = parseName(view, offset + 6);
     const data = [
-        {key: 'priority', value: priority},
-        {key: 'weight', value: weight},
-        {key: 'port', value: port},
-        {key: 'target', value: target.name},
+        {key: "priority", value: priority},
+        {key: "weight", value: weight},
+        {key: "port", value: port},
+        {key: "target", value: target.name},
     ];
     return data;
 }
@@ -288,12 +284,12 @@ function parseDSRecordData(view, offset, dataLength) {
     const algorithm  = view.getUint8(offset  + 2);
     const digestType = view.getUint8(offset  + 3);
     const buffer     = view.buffer.slice(4, offset + dataLength);
-    const digest     = new Uint8Array(buffer).map(b => b.toString(16).padStart(2, '0')).join('');
+    const digest     = new Uint8Array(buffer).map(b => b.toString(16).padStart(2, "0")).join("");
     const data = [
-        {key: 'keyTag', value: keyTag},
-        {key: 'algorithm', value: algorithm},
-        {key: 'digestType', value: digestType},
-        {key: 'digest', value: digest},
+        {key: "keyTag", value: keyTag},
+        {key: "algorithm", value: algorithm},
+        {key: "digestType", value: digestType},
+        {key: "digest", value: digest},
     ];
     return data;
 }
@@ -301,7 +297,7 @@ function parseDSRecordData(view, offset, dataLength) {
 function parseTXTRecordData(view, offset) {
     const length = view.getUint8(offset);
     const text   = new TextDecoder().decode(view.buffer.slice(offset + 1, offset + 1 + length));
-    const data   = [{key: 'text', value: text}];
+    const data   = [{key: "text", value: text}];
     return data;
 }
 
@@ -317,15 +313,15 @@ function parseRRSIGRecordData(view, offset, dataLength) {
     const buffer        = view.buffer.slice(signersName.offset, signersName.offset + dataLength);
     const signature     = btoa(String.fromCharCode(...new Uint8Array(buffer)));
     const data = [
-        {key: 'typeCovered', value: typeCovered},
-        {key: 'algorithm', value: algorithm},
-        {key: 'labels', value: labels},
-        {key: 'originalTtl', value: originalTtl},
-        {key: 'expiration', value: new Date(expiration * 1000)},
-        {key: 'inception', value: new Date(inception * 1000)},
-        {key: 'keyTag', value: keyTag},
-        {key: 'signersName', value: signersName.name},
-        {key: 'signature', value: signature}
+        {key: "typeCovered", value: typeCovered},
+        {key: "algorithm", value: algorithm},
+        {key: "labels", value: labels},
+        {key: "originalTtl", value: originalTtl},
+        {key: "expiration", value: new Date(expiration * 1000)},
+        {key: "inception", value: new Date(inception * 1000)},
+        {key: "keyTag", value: keyTag},
+        {key: "signersName", value: signersName.name},
+        {key: "signature", value: signature}
     ];
     return data;
 }
@@ -350,8 +346,8 @@ function parseNSECRecordData(view, offset, dataLength) {
         }
     }
     const data = [
-        {key: 'nextDomain', value: nextDomain.name},
-        {key: 'typeBitmaps', value: typeBitmaps}
+        {key: "nextDomain", value: nextDomain.name},
+        {key: "typeBitmaps", value: typeBitmaps}
     ];
     return data;
 }
@@ -360,22 +356,22 @@ function parseDNSKEYRecordData(view, offset) {
     let flag = view.getUint16(offset);
     switch (flag) {
         case 256:
-            flag = 'ZSK';
+            flag = "ZSK";
             break;
         case 257:
-            flag = 'KSK';
+            flag = "KSK";
             break;
         default:
-            flag = 'unknown';
+            flag = "unknown";
     } 
     const protocol  = view.getUint8(offset + 2);
     const algorithm = view.getUint8(offset + 3);
-    const publickey = arrayBufferToBase64(view.buffer.slice(offset + 4, offset + 68));
+    const publickey = btoa(String.fromCharCode(...new Uint8Array(view.buffer.slice(offset + 4, offset + 68))));
     const data = [
-        {key: 'flag', value: flag},
-        {key: 'protocol', value: protocol},
-        {key: 'algorithm', value: algorithm},
-        {key: 'publickey', value: publickey}
+        {key: "flag", value: flag},
+        {key: "protocol", value: protocol},
+        {key: "algorithm", value: algorithm},
+        {key: "publickey", value: publickey}
     ];
     return data;
 }
@@ -413,52 +409,52 @@ function parseResponseMessage(buffer) {
         const dataLength = view.getUint16(offset + 8);
         offset += 10;
 
-        let data = [{key: '', value: ''}];
+        let data = [{key: "", value: ""}];
         switch (type) {
-            case 'A':
+            case "A":
                 data = parseARecord(view, offset, dataLength);
                 break;
-            case 'NS':
+            case "NS":
                 data = parseNSRecord(view, offset);
                 break;
-            case 'CNAME':
+            case "CNAME":
                 data = parseCNAMERecord(view, offset);
                 break;
-            case 'SOA':
+            case "SOA":
                 data = parseSOARecord(view, offset);
                 break;
-            case 'MX':
+            case "MX":
                 data = parseMXRecordData(view, offset);
                 break;
-            case 'AAAA':
+            case "AAAA":
                 data = parseAAAARecordData(view, offset, dataLength);
                 break;
-            case 'SRV':
+            case "SRV":
                 data = parseSRVRecordData(view, offset);
                 break;
-            case 'DS':
+            case "DS":
                 data = parseDSRecordData(view, offset, dataLength);
                 break;
-            case 'TXT':
+            case "TXT":
                 data = parseTXTRecordData(view, offset);
                 break;
-            case 'RRSIG':
+            case "RRSIG":
                 data = parseRRSIGRecordData(view, offset, dataLength);
                 break;
-            case 'NSEC':
+            case "NSEC":
                 data = parseNSECRecordData(view, offset, dataLength);
                 break;
-            case 'DNSKEY':
+            case "DNSKEY":
                 data = parseDNSKEYRecordData(view, offset);
                 break;
-            case 'CDS':
+            case "CDS":
                 data = parseDSRecordData(view, offset, dataLength);
                 break;
-            case 'CDNSKEY':
+            case "CDNSKEY":
                 data = parseDNSKEYRecordData(view, offset);
                 break;
             default:
-                data = [{key: 'info', value: 'this RR type is not yet taken into account by dnsclient.js.'}];
+                data = [{key: "info", value: "this RR type is not yet taken into account by dnsclient.js."}];
         }
 
         offset += dataLength;
@@ -473,8 +469,8 @@ function parseQueryMessage(question) {
     const flags   = new Uint8Array([0x01, 0x00]);
     const qdcount = new Uint8Array([0x00, 0x01]);
 
-    // Split domain name into labels (z.B. "example.com" -> [7, 'example', 3, 'com', 0])
-    const labels = question.name.split('.').map(part => {
+    // Split domain name into labels (z.B. "example.com" -> [7, "example", 3, "com", 0])
+    const labels = question.name.split(".").map(part => {
         const label = new Array(part.length + 1);
         label[0] = part.length;
         for (let i = 0; i < part.length; i++) {
@@ -532,7 +528,7 @@ function parseName(view, offset) {
 }
 
 export async function query(url, question) {
-    let message = '';
+    let message = "";
     const query = parseQueryMessage(question);
     const start = performance.now();
     
