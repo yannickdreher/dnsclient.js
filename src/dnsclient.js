@@ -4,7 +4,7 @@
  * Author:   Yannick Dreher (yannick.dreher@dremaxx.de)
  * -----
  * Created:  Friday, 29th November 2024 3:30:10 pm
- * Modified: Thursday, 6th February 2025 2:24:43 pm
+ * Modified: Thursday, 6th February 2025 6:20:14 pm
  * -----
  * License: MIT License (https://opensource.org/licenses/MIT)
  * Copyright © 2024-2025 Yannick Dreher
@@ -158,9 +158,12 @@ export const TYPE = Object.freeze({
     TXT: 16,
     AAAA: 28,
     SRV: 33,
+    DS: 43,
     RRSIG: 46,
     NSEC: 47,
     DNSKEY: 48,
+    CDS: 59,
+    CDNSKEY: 60,
     ANY: 255
 });
 
@@ -276,6 +279,21 @@ function parseSRVRecordData(view, offset) {
         {key: 'weight', value: weight},
         {key: 'port', value: port},
         {key: 'target', value: target.name},
+    ];
+    return data;
+}
+
+function parseDSRecordData(view, offset, dataLength) {
+    const keyTag     = view.getUint16(offset + 0);
+    const algorithm  = view.getUint8(offset  + 2);
+    const digestType = view.getUint8(offset  + 3);
+    const buffer     = view.buffer.slice(4, offset + dataLength);
+    const digest     = new Uint8Array(buffer).map(b => b.toString(16).padStart(2, '0')).join('');
+    const data = [
+        {key: 'keyTag', value: keyTag},
+        {key: 'algorithm', value: algorithm},
+        {key: 'digestType', value: digestType},
+        {key: 'digest', value: digest},
     ];
     return data;
 }
@@ -418,6 +436,9 @@ function parseResponseMessage(buffer) {
             case 'SRV':
                 data = parseSRVRecordData(view, offset);
                 break;
+            case 'DS':
+                data = parseDSRecordData(view, offset, dataLength);
+                break;
             case 'TXT':
                 data = parseTXTRecordData(view, offset);
                 break;
@@ -428,6 +449,12 @@ function parseResponseMessage(buffer) {
                 data = parseNSECRecordData(view, offset, dataLength);
                 break;
             case 'DNSKEY':
+                data = parseDNSKEYRecordData(view, offset);
+                break;
+            case 'CDS':
+                data = parseDSRecordData(view, offset, dataLength);
+                break;
+            case 'CDNSKEY':
                 data = parseDNSKEYRecordData(view, offset);
                 break;
             default:
