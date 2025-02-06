@@ -8,20 +8,19 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      # Checks-out your repository
       - uses: actions/checkout@v2
         with:
           ref: ${{ github.ref }}
 
-      # Job for Minify-JS
       - name: Minify
         uses: jossydevers/minify-js@v1.0.1
         with:
-          directory: 'src/dnsclient.js' # (OPTIONAL)
-          output: 'src/' # (OPTIONAL)
+          directory: 'src/dnsclient.js'
+          output: 'src/'
           
-      # Auto-commit to repository
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: 'minifyed'
