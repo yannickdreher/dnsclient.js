@@ -26,7 +26,7 @@ jobs:
       run: npm install -g terser
 
     - name: Minify dnsclient.js
-      run: terser src/dnsclient.js --compress --mangle --output dist/
+      run: terser src/dnsclient.js --compress --mangle --output dist/dnsclient.min.js
 
     - name: Commit minified file
       run: |
