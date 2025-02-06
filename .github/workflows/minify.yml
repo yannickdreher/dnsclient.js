@@ -14,6 +14,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+          ref: ${{ github.ref }}
 
     - name: Setup node.js
       uses: actions/setup-node@v4
@@ -24,12 +26,12 @@ jobs:
       run: npm install -g minify
 
     - name: Minify dnsclient.js
-      run: minify dnsclient.js -o dist/dnsclient.min.js
+      run: minify src/dnsclient.js -o dist/dnsclient.min.js
 
     - name: Commit minified file
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git add dist/dnsclient.min.js
-        git commit -m "Minify dnsclient.js [CI Skip]" || echo "No changes to commit"
+        git commit -m "minify dnsclient.js [CI Skip]" || echo "No changes to commit"
         git push
