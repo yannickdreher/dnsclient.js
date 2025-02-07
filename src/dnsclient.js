@@ -1,14 +1,14 @@
 /*
- * Project:  dnsclient.js
- * File:     dnsclient.js
- * Author:   Yannick Dreher (yannick.dreher@dremaxx.de)
- * -----
- * Created:  Friday, 29th November 2024 3:30:10 pm
- * Modified: Friday, 7th February 2025 2:02:41 pm
- * -----
- * License: MIT License (https://opensource.org/licenses/MIT)
- * Copyright © 2024-2025 Yannick Dreher
- */
+  * Project:  dnsclient.js
+  * File:     src/dnsclient.js
+  * Author:   Yannick Dreher (yannick.dreher@dremaxx.de)
+  * -----
+  * Created:  Friday, 29th November 2024 3:30:10 pm
+  * Modified: Friday, 07th February 2025 01:47:33 pm
+  * -----
+  * License: MIT License (https://opensource.org/licenses/MIT)
+  * Copyright © 2024-2025 Yannick Dreher
+  */
 
 // Enums
 const QR_NAMES = Object.freeze({
