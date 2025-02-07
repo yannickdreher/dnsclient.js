@@ -246,11 +246,11 @@ export class DnsSerializer {
                 case "NSEC":
                     data = this.NSEC.deserialize(view, offset, dataLength); break;
                 case "DNSKEY":
-                    data = this.DNSKEY.deserialize(view, offset); break;
+                    data = this.DNSKEY.deserialize(view, offset, dataLength); break;
                 case "CDS":
                     data = this.DS.deserialize(view, offset, dataLength); break;
                 case "CDNSKEY":
-                    data = this.DNSKEY.deserialize(view, offset); break;
+                    data = this.DNSKEY.deserialize(view, offset, dataLength); break;
                 default:
                     data = [{key: "info", value: "this RR type is not yet taken into account by dnsclient.js."}];
             }

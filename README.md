@@ -11,7 +11,7 @@ It supports various DNS record types and handles DNS response parsing, including
 ## Features
 
 - Perform DNS queries over HTTPS
-- Support for multiple DNS record types (A, NS, CNAME, SOA, MX, TXT, AAAA, RSIG, DNSKEY, ANY)
+- Support for multiple DNS record types (A, NS, CNAME, SOA, MX, TXT, AAAA, RSIG, DNSKEY, ANY, ...)
 - Handles DNS response parsing and name compression
 
 ## Installation
@@ -48,6 +48,7 @@ export const TYPE = Object.freeze({
     NS: 2,
     CNAME: 5,
     SOA: 6,
+    HINFO: 13,
     MX: 15,
     TXT: 16,
     AAAA: 28,
