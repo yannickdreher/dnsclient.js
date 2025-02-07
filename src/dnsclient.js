@@ -1,10 +1,10 @@
 /*
  * Project:  dnsclient.js
- * File:     $FILE
+ * File:     ${FILE}
  * Author:   Yannick Dreher (yannick.dreher@dremaxx.de)
  * -----
  * Created:  Friday, 29th November 2024 3:30:10 pm
- * Modified: $MODIFIED_DATE
+ * Modified: ${MODIFIED_DATE}
  * -----
  * License: MIT License (https://opensource.org/licenses/MIT)
  * Copyright © 2024-2025 Yannick Dreher
