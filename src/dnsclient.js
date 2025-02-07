@@ -154,6 +154,7 @@ export const TYPE = Object.freeze({
     NS: 2,
     CNAME: 5,
     SOA: 6,
+    HINFO: 13,
     MX: 15,
     TXT: 16,
     AAAA: 28,
@@ -376,6 +377,24 @@ export class DnsSerializer {
             return data;
         }
     }
+
+    static HINFO = {
+        deserialize(view, offset) {
+            const cpuLength = view.getUint8(offset);
+            offset += 1;
+            const cpu = new TextDecoder().decode(view.buffer.slice(offset, offset + cpuLength));
+            offset += cpuLength;
+            const osLength = view.getUint8(offset);
+            offset += 1;
+            const os = new TextDecoder().decode(view.buffer.slice(offset, offset + osLength));
+            offset += osLength;
+            const data   = [
+                {key: "cpu", value: cpu},
+                {key: "os", value: os}
+            ];
+            return data;
+        }
+    }
     
     static MX = {
         deserialize(view, offset) {
@@ -424,16 +443,19 @@ export class DnsSerializer {
     
     static DS = {
         deserialize(view, offset, dataLength) {
-            const keyTag     = view.getUint16(offset + 0);
-            const algorithm  = view.getUint8(offset  + 2);
-            const digestType = view.getUint8(offset  + 3);
-            const buffer     = view.buffer.slice(4, offset + dataLength);
-            const digest     = new Uint8Array(buffer).map(b => b.toString(16).padStart(2, "0")).join("");
+            const keyTag     = view.getUint16(offset);
+            offset += 2;
+            const algorithm  = view.getUint8(offset);
+            offset += 1;
+            const digestType = view.getUint8(offset);
+            offset += 1;
+            const digestBytes  = new Uint8Array(view.buffer.slice(offset, offset + (dataLength - 4)));
+            const digestBase64 = btoa(String.fromCharCode(...digestBytes));
             const data = [
                 {key: "keyTag", value: keyTag},
                 {key: "algorithm", value: algorithm},
                 {key: "digestType", value: digestType},
-                {key: "digest", value: digest},
+                {key: "digest", value: digestBase64},
             ];
             return data;
         }
@@ -458,7 +480,7 @@ export class DnsSerializer {
             const inception     = view.getUint32(offset  + 12);
             const keyTag        = view.getUint16(offset  + 16);
             const signersName   = DnsSerializer.DomainName.deserialize(view, offset + 18);
-            const buffer        = view.buffer.slice(signersName.offset, signersName.offset + dataLength);
+            const buffer        = view.buffer.slice(signersName.offset, offset + dataLength);
             const signature     = btoa(String.fromCharCode(...new Uint8Array(buffer)));
             const data = [
                 {key: "typeCovered", value: typeCovered},
@@ -479,7 +501,7 @@ export class DnsSerializer {
         deserialize(view, offset, dataLength) {
             const nextDomain  = DnsSerializer.DomainName.deserialize(view, offset);
             offset += nextDomain.length;
-            const maxOffset = offset + dataLength - nextDomain.length;
+            const maxOffset = offset + (dataLength - nextDomain.length);
             const typeBitmaps = [];
             while (offset < maxOffset) {
                 const blockNumber = view.getUint8(offset++);
@@ -504,8 +526,9 @@ export class DnsSerializer {
     }
     
     static DNSKEY = {
-        deserialize(view, offset) {
+        deserialize(view, offset, dataLength) {
             let flag = view.getUint16(offset);
+            offset += 2;
             switch (flag) {
                 case 256:
                     flag = "ZSK";
@@ -516,14 +539,17 @@ export class DnsSerializer {
                 default:
                     flag = "unknown";
             } 
-            const protocol  = view.getUint8(offset + 2);
-            const algorithm = view.getUint8(offset + 3);
-            const publickey = btoa(String.fromCharCode(...new Uint8Array(view.buffer.slice(offset + 4, offset + 68))));
+            const protocol  = view.getUint8(offset);
+            offset += 1;
+            const algorithm = view.getUint8(offset);
+            offset += 1;
+            const publicKeyBytes  = new Uint8Array(view.buffer.slice(offset, offset + (dataLength - 4)));
+            const publicKeyBase64 = btoa(String.fromCharCode(...publicKeyBytes));
             const data = [
                 {key: "flag", value: flag},
                 {key: "protocol", value: protocol},
                 {key: "algorithm", value: algorithm},
-                {key: "publickey", value: publickey}
+                {key: "publickey", value: publicKeyBase64}
             ];
             return data;
         }

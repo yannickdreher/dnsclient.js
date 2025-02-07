@@ -1,74 +1,64 @@
 import * as dnsclient from '../src/dnsclient.js';
 
 describe('Query type "RRSIG" should return the correct data', () => {
-    let result;
-    const question = new dnsclient.Question('dremaxx.de', dnsclient.TYPE.RRSIG, dnsclient.CLAZZ.IN);
+    const data = new Uint8Array([
+        0x00, 0x01, // Type 1 (A Record)
+        0x08, // Algorithm 8 (RSA/SHA-256)
+        0x02, // 2 Labels (example.com)
+        0x00, 0x01, 0x51, 0x80, // 86400 in big endian
+        0x00, 0x01, 0x64, 0x5F, // 1970-01-02T01:20:31.000Z
+        0x00, 0x01, 0x62, 0x5D, // 1970-01-02T01:11:57.000Z
+        0x30, 0x39, // Key Tag 12345
+        0x07, 0x65, 0x78, 0x61, 0x6D, 0x70, 0x6C, 0x65, // "example"
+        0x03, 0x63, 0x6F, 0x6D, 0x00, // "com" + NULL byte
+        0x54, 0x68, 0x65, 0x20,
+        0x71, 0x75, 0x69, 0x63,
+        0x6b, 0x20, 0x62, 0x72,
+        0x6f, 0x77, 0x6e, 0x20,
+        0x66, 0x6f, 0x78, 0x20,
+        0x6a, 0x75, 0x6d, 0x70,
+        0x73, 0x20, 0x6f, 0x76,
+        0x65, 0x72, 0x20, 0x31,
+        0x33, 0x20, 0x6c, 0x61,
+        0x7a, 0x79, 0x20, 0x64,
+        0x6f, 0x67, 0x73, 0x2e
+    ]);
+    const view = new DataView(data.buffer);
+    const result = dnsclient.DnsSerializer.RRSIG.deserialize(view, 0, data.length);
 
-    beforeAll(async () => {
-        result = await dnsclient.query('https://dns.dremaxx.de/dns-query', question);
+    test('typeCovered is A', () => {
+        expect(result[0].value).toBe('A');
     });
 
-    test('RCODE is "NOERROR"', () => {
-        expect(result.message.flags).toHaveProperty("rcode", "NOERROR");
+    test('algorithm is 8', () => {
+        expect(result[1].value).toBe(8);
     });
 
-    test('Record type of answers is "RRSIG"', () => {
-        result.message.answers.forEach(answer => {
-            expect(answer.type).toBe('RRSIG');
-        });
+    test('labels is 2', () => {
+        expect(result[2].value).toBe(2);
     });
 
-    test('Data has property "typeCovered"', () => {
-        result.message.answers.forEach(answer => {
-            expect(answer.data[0]).toHaveProperty("key", "typeCovered");
-        });
+    test('originalTtl is 86400', () => {
+        expect(result[3].value).toBe(86400);
     });
 
-    test('Data has property "algorithm"', () => {
-        result.message.answers.forEach(answer => {
-            expect(answer.data[1]).toHaveProperty("key", "algorithm");
-        });
+    test('expiration is 1970-01-02T01:20:31.000Z', () => {
+        expect(result[4].value.toISOString()).toBe(new Date('1970-01-02T01:20:31.000Z').toISOString());
     });
 
-    test('Data has property "labels"', () => {
-        result.message.answers.forEach(answer => {
-            expect(answer.data[2]).toHaveProperty("key", "labels");
-        });
+    test('inception is 1970-01-02T01:11:57.000Z', () => {
+        expect(result[5].value.toISOString()).toBe(new Date('1970-01-02T01:11:57.000Z').toISOString());
     });
 
-    test('Data has property "originalTtl"', () => {
-        result.message.answers.forEach(answer => {
-            expect(answer.data[3]).toHaveProperty("key", "originalTtl");
-        });
+    test('keyTag is 12345', () => {
+        expect(result[6].value).toBe(12345);
     });
 
-    test('Data has property "expiration"', () => {
-        result.message.answers.forEach(answer => {
-            expect(answer.data[4]).toHaveProperty("key", "expiration");
-        });
+    test('signersName is example.com', () => {
+        expect(result[7].value).toBe('example.com');
     });
 
-    test('Data has property "inception"', () => {
-        result.message.answers.forEach(answer => {
-            expect(answer.data[5]).toHaveProperty("key", "inception");
-        });
-    });
-
-    test('Data has property "keyTag"', () => {
-        result.message.answers.forEach(answer => {
-            expect(answer.data[6]).toHaveProperty("key", "keyTag");
-        });
-    });
-
-    test('Data has property "signersName"', () => {
-        result.message.answers.forEach(answer => {
-            expect(answer.data[7]).toHaveProperty("key", "signersName");
-        });
-    });
-
-    test('Data has property "signature"', () => {
-        result.message.answers.forEach(answer => {
-            expect(answer.data[8]).toHaveProperty("key", "signature");
-        });
+    test('signature is correct', () => {
+        expect(result[8].value).toBe('VGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIDEzIGxhenkgZG9ncy4=');
     });
 });

@@ -1,20 +1,31 @@
 import * as dnsclient from '../src/dnsclient.js';
 
 describe('Query type "SRV" should return the correct data', () => {
-    let result;
-    const question = new dnsclient.Question('_sip._tls.dremaxx.de', dnsclient.TYPE.SRV, dnsclient.CLAZZ.IN);
+    const data = new Uint8Array([
+        0x00, 0x0A, // Priority = 10
+        0x00, 0x05, // Weight = 5
+        0x13, 0xC4, // Port = 5060
+        0x03, 0x73, 0x69, 0x70, // "sip"
+        0x07, 0x65, 0x78, 0x61, 0x6D, 0x70, 0x6C, 0x65, // "example"
+        0x03, 0x63, 0x6F, 0x6D, // "com"
+        0x00 // Null-Terminator
+    ]);
+    const view = new DataView(data.buffer);
+    const result = dnsclient.DnsSerializer.SRV.deserialize(view, 0);
 
-    beforeAll(async () => {
-        result = await dnsclient.query('https://dns.dremaxx.de/dns-query', question);
+    test('priority is 10', () => {
+        expect(result[0].value).toBe(10);
     });
 
-    test('RCODE is "NOERROR"', () => {
-        expect(result.message.flags).toHaveProperty("rcode", "NOERROR");
+    test('weight is 5', () => {
+        expect(result[1].value).toBe(5);
     });
 
-    test('Record type of answers is "SRV"', () => {
-        result.message.answers.forEach(answer => {
-            expect(answer.type).toBe('SRV');
-        });
+    test('port is 5060', () => {
+        expect(result[2].value).toBe(5060);
+    });
+
+    test('target is sip.example.com', () => {
+        expect(result[3].value).toBe('sip.example.com');
     });
 });
