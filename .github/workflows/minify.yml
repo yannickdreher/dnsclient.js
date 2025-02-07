@@ -30,7 +30,7 @@ jobs:
 
     - name: Set headers
       run: |
-        FILES=("dnsclient.js" "dnsclient.min.js")
+        FILES=("src/dnsclient.js" "dist/dnsclient.min.js")
         AUTHOR="Yannick Dreher (yannick.dreher@dremaxx.de)"
         LICENSE="MIT License (https://opensource.org/licenses/MIT)"
         COPYRIGHT="Copyright © 2024-2025 Yannick Dreher"
