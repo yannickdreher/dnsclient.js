@@ -34,7 +34,7 @@ jobs:
         MODIFIED_DATE=$(date +"%A, %dth %B %Y %I:%M:%S %P")
 
         for FILE in "${FILES[@]}"; do
-          HEADER=$(sed "s/{{FILENAME}}/$FILE/; s/{{MODIFIED_DATE}}/$MODIFIED_DATE/" header.tmpl)
+          HEADER=$(sed 's/{{FILENAME}}/$FILE/; s/{{MODIFIED_DATE}}/$MODIFIED_DATE/' header.tmpl)
           sed -i '/\/\*/,/\*\//d' "$FILE"
           echo -e "$HEADER\n$(cat $FILE)" > "$FILE"
         done
