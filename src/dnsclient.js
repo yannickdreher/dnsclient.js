@@ -186,38 +186,146 @@ export class Question {
 }
 
 // Classes
-export class NameSerializer {
-    static deserialize(view, offset) {
-        let labels = [];
-        let length = view.getUint8(offset);
-        let jumped = false;
-        let jumpOffset = 0;
-        let initialOffset = offset;
-        while (length !== 0) {
-            if ((length & 0xc0) === 0xc0) {
-                if (!jumped) {
-                    jumpOffset = offset + 2;
-                }
-                offset = ((length & 0x3f) << 8) | view.getUint8(offset + 1);
-                length = view.getUint8(offset);
-                jumped = true;
-            } else {
-                offset++;
-                labels.push(
-                    new TextDecoder().decode(view.buffer.slice(offset, offset + length))
-                );
-                offset += length;
-                length = view.getUint8(offset);
+export class DnsSerializer {
+    static deserialize(buffer) {
+        const view = new DataView(buffer);
+        const transactionID = view.getUint16(0);
+        const flags = this.HeaderFlags.deserialize(view.getUint16(2));
+        const qdcount = view.getUint16(4);
+        const ancount = view.getUint16(6);
+        const arcount = view.getUint16(8);
+        const adcount = view.getUint16(10);
+        let offset = 12;
+        const questions = [];
+        for (let i = 0; i < qdcount; i++) {
+            const name = this.DomainName.deserialize(view, offset);
+            offset = name.offset;
+            const type = TYPE_NAMES[view.getUint16(offset)];
+            offset += 2;
+            const clazz = CLASS_NAMES[view.getUint16(offset)];
+            offset += 2;
+            questions.push({ name: name.name, type, clazz });
+        }
+        const answers = [];
+        for (let i = 0; i < ancount; i++) {
+            const name = this.DomainName.deserialize(view, offset);
+            offset = name.offset;
+            const type = TYPE_NAMES[view.getUint16(offset)];
+            offset += 2;
+            const clazz = CLASS_NAMES[view.getUint16(offset)];
+            offset += 2;
+            const ttl = view.getUint32(offset);
+            offset += 4;
+            const dataLength = view.getUint16(offset);
+            offset += 2;
+            let data = [{key: "", value: ""}];
+            switch (type) {
+                case "A":
+                    data = this.A.deserialize(view, offset, dataLength); break;
+                case "NS":
+                    data = this.NS.deserialize(view, offset); break;
+                case "CNAME":
+                    data = this.CNAME.deserialize(view, offset); break;
+                case "SOA":
+                    data = this.SOA.deserialize(view, offset); break;
+                case "MX":
+                    data = this.MX.deserialize(view, offset); break;
+                case "AAAA":
+                    data = this.AAAA.deserialize(view, offset, dataLength); break;
+                case "SRV":
+                    data = this.SRV.deserialize(view, offset); break;
+                case "DS":
+                    data = this.DS.deserialize(view, offset, dataLength); break;
+                case "TXT":
+                    data = this.TXT.deserialize(view, offset); break;
+                case "RRSIG":
+                    data = this.RRSIG.deserialize(view, offset, dataLength); break;
+                case "NSEC":
+                    data = this.NSEC.deserialize(view, offset, dataLength); break;
+                case "DNSKEY":
+                    data = this.DNSKEY.deserialize(view, offset); break;
+                case "CDS":
+                    data = this.DS.deserialize(view, offset, dataLength); break;
+                case "CDNSKEY":
+                    data = this.DNSKEY.deserialize(view, offset); break;
+                default:
+                    data = [{key: "info", value: "this RR type is not yet taken into account by dnsclient.js."}];
             }
+            offset += dataLength;
+            answers.push({ name: name.name, type, clazz, ttl, data });
         }
-        if (!jumped) {
-            jumpOffset = offset + 1;
-        }
-        return { name: labels.join("."), offset: jumpOffset, length: jumpOffset - initialOffset };
+        return { transactionID, flags, qdcount, ancount, arcount, adcount, questions, answers };
     }
-}
 
-export class RecordDataSerializer {
+    static serialize(question) {
+        const transactionId = crypto.getRandomValues(new Uint8Array(2));
+        const flags   = new Uint8Array([0x01, 0x00]);
+        const qdcount = new Uint8Array([0x00, 0x01]);
+        const labels = question.name.split(".").map(part => {
+            const label = new Array(part.length + 1);
+            label[0] = part.length;
+            for (let i = 0; i < part.length; i++) {
+                label[i + 1] = part.charCodeAt(i);
+            }
+            return label;
+        }).flat(Infinity).concat([0]);
+        const type = new Uint8Array([0x00, question.type]);
+        const clazz = new Uint8Array([0x00, question.clazz]);
+        return Uint8Array.from([
+            ...transactionId, 
+            ...flags, 
+            ...qdcount, 
+            0x00, 0x00, // ANCOUNT
+            0x00, 0x00, // NSCOUNT
+            0x00, 0x00, // ARCOUNT
+            ...labels,
+            ...type,
+            ...clazz
+        ]);
+    }
+
+    static HeaderFlags = {
+        deserialize(buffer) {
+            const qr = QR_NAMES[(buffer >> 15) & 1];
+            const opcode = OPCODE_NAMES[(buffer >> 11) & 0xF];
+            const aa = (buffer >> 10) & 1;
+            const tc = (buffer >> 9) & 1;
+            const rd = (buffer >> 8) & 1;
+            const ra = (buffer >> 7) & 1;
+            const rcode = RCODE_NAMES[buffer & 0xF]; 
+            return {qr, opcode, aa, tc, rd, ra, rcode};
+        }
+    }
+
+    static DomainName = {
+        deserialize(view, offset) {
+            let labels = [];
+            let length = view.getUint8(offset);
+            let jumped = false;
+            let jumpOffset = 0;
+            let initialOffset = offset;
+            while (length !== 0) {
+                if ((length & 0xc0) === 0xc0) {
+                    if (!jumped) {
+                        jumpOffset = offset + 2;
+                    }
+                    offset = ((length & 0x3f) << 8) | view.getUint8(offset + 1);
+                    length = view.getUint8(offset);
+                    jumped = true;
+                } else {
+                    offset++;
+                    labels.push(new TextDecoder().decode(view.buffer.slice(offset, offset + length)));
+                    offset += length;
+                    length = view.getUint8(offset);
+                }
+            }
+            if (!jumped) {
+                jumpOffset = offset + 1;
+            }
+            return { name: labels.join("."), offset: jumpOffset, length: jumpOffset - initialOffset };
+        }
+    }
+
     static A = {
         deserialize(view, offset, dataLength) {
             if (dataLength !== 4) {
@@ -231,7 +339,7 @@ export class RecordDataSerializer {
 
     static NS = {
         deserialize(view, offset) {
-            const value = NameSerializer.deserialize(view, offset);
+            const value = DnsSerializer.DomainName.deserialize(view, offset);
             const data  = [{key: "name", value: value.name}];
             return data;
         }
@@ -239,7 +347,7 @@ export class RecordDataSerializer {
 
     static CNAME = {
         deserialize(view, offset) {
-            const value = NameSerializer.deserialize(view, offset);
+            const value = DnsSerializer.DomainName.deserialize(view, offset);
             const data = [{key: "name", value: value.name}];
             return data;
         }
@@ -247,9 +355,9 @@ export class RecordDataSerializer {
     
     static SOA = {
         deserialize(view, offset) {
-            const mname = NameSerializer.deserialize(view, offset);
+            const mname = DnsSerializer.DomainName.deserialize(view, offset);
             offset = mname.offset;
-            const rname = NameSerializer.deserialize(view, offset);
+            const rname = DnsSerializer.DomainName.deserialize(view, offset);
             offset = rname.offset;
             const serial  = view.getUint32(offset +  0);
             const refresh = view.getUint32(offset +  4);
@@ -272,7 +380,7 @@ export class RecordDataSerializer {
     static MX = {
         deserialize(view, offset) {
             const preference = view.getUint16(offset);
-            const exchange   = NameSerializer.deserialize(view, offset + 2);
+            const exchange   = DnsSerializer.DomainName.deserialize(view, offset + 2);
             const data = [
                 {key: "preference", value: preference},
                 {key: "exchange", value: exchange.name}
@@ -303,7 +411,7 @@ export class RecordDataSerializer {
             const priority = view.getUint16(offset  + 0);
             const weight   = view.getUint16(offset  + 2);
             const port     = view.getUint16(offset  + 4);
-            const target   = NameSerializer.deserialize(view, offset + 6);
+            const target   = DnsSerializer.DomainName.deserialize(view, offset + 6);
             const data = [
                 {key: "priority", value: priority},
                 {key: "weight", value: weight},
@@ -349,7 +457,7 @@ export class RecordDataSerializer {
             const expiration    = view.getUint32(offset  +  8);
             const inception     = view.getUint32(offset  + 12);
             const keyTag        = view.getUint16(offset  + 16);
-            const signersName   = NameSerializer.deserialize(view, offset + 18);
+            const signersName   = DnsSerializer.DomainName.deserialize(view, offset + 18);
             const buffer        = view.buffer.slice(signersName.offset, signersName.offset + dataLength);
             const signature     = btoa(String.fromCharCode(...new Uint8Array(buffer)));
             const data = [
@@ -369,7 +477,7 @@ export class RecordDataSerializer {
     
     static NSEC = {
         deserialize(view, offset, dataLength) {
-            const nextDomain  = NameSerializer.deserialize(view, offset);
+            const nextDomain  = DnsSerializer.DomainName.deserialize(view, offset);
             offset += nextDomain.length;
             const maxOffset = offset + dataLength - nextDomain.length;
             const typeBitmaps = [];
@@ -419,118 +527,6 @@ export class RecordDataSerializer {
             ];
             return data;
         }
-    }
-}
-
-export class HeaderFlagsSerializer {
-    static deserialize(buffer) {
-        const qr = QR_NAMES[(buffer >> 15) & 1];
-        const opcode = OPCODE_NAMES[(buffer >> 11) & 0xF];
-        const aa = (buffer >> 10) & 1;
-        const tc = (buffer >> 9) & 1;
-        const rd = (buffer >> 8) & 1;
-        const ra = (buffer >> 7) & 1;
-        const rcode = RCODE_NAMES[buffer & 0xF]; 
-        return {qr, opcode, aa, tc, rd, ra, rcode};
-    }
-}
-
-export class DnsSerializer {
-    static deserialize(buffer) {
-        const view = new DataView(buffer);
-        const transactionID = view.getUint16(0);
-        const flags = HeaderFlagsSerializer.deserialize(view.getUint16(2));
-        const qdcount = view.getUint16(4);
-        const ancount = view.getUint16(6);
-        const arcount = view.getUint16(8);
-        const adcount = view.getUint16(10);
-        let offset = 12;
-        const questions = [];
-        for (let i = 0; i < qdcount; i++) {
-            const name = NameSerializer.deserialize(view, offset);
-            offset = name.offset;
-            const type = TYPE_NAMES[view.getUint16(offset)];
-            offset += 2;
-            const clazz = CLASS_NAMES[view.getUint16(offset)];
-            offset += 2;
-            questions.push({ name: name.name, type, clazz });
-        }
-        const answers = [];
-        for (let i = 0; i < ancount; i++) {
-            const name = NameSerializer.deserialize(view, offset);
-            offset = name.offset;
-            const type = TYPE_NAMES[view.getUint16(offset)];
-            offset += 2;
-            const clazz = CLASS_NAMES[view.getUint16(offset)];
-            offset += 2;
-            const ttl = view.getUint32(offset);
-            offset += 4;
-            const dataLength = view.getUint16(offset);
-            offset += 2;
-            let data = [{key: "", value: ""}];
-            switch (type) {
-                case "A":
-                    data = RecordDataSerializer.A.deserialize(view, offset, dataLength); break;
-                case "NS":
-                    data = RecordDataSerializer.NS.deserialize(view, offset); break;
-                case "CNAME":
-                    data = RecordDataSerializer.CNAME.deserialize(view, offset); break;
-                case "SOA":
-                    data = RecordDataSerializer.SOA.deserialize(view, offset); break;
-                case "MX":
-                    data = RecordDataSerializer.MX.deserialize(view, offset); break;
-                case "AAAA":
-                    data = RecordDataSerializer.AAAA.deserialize(view, offset, dataLength); break;
-                case "SRV":
-                    data = RecordDataSerializer.SRV.deserialize(view, offset); break;
-                case "DS":
-                    data = RecordDataSerializer.DS.deserialize(view, offset, dataLength); break;
-                case "TXT":
-                    data = RecordDataSerializer.TXT.deserialize(view, offset); break;
-                case "RRSIG":
-                    data = RecordDataSerializer.RRSIG.deserialize(view, offset, dataLength); break;
-                case "NSEC":
-                    data = RecordDataSerializer.NSEC.deserialize(view, offset, dataLength); break;
-                case "DNSKEY":
-                    data = RecordDataSerializer.DNSKEY.deserialize(view, offset); break;
-                case "CDS":
-                    data = RecordDataSerializer.DS.deserialize(view, offset, dataLength); break;
-                case "CDNSKEY":
-                    data = RecordDataSerializer.DNSKEY.deserialize(view, offset); break;
-                default:
-                    data = [{key: "info", value: "this RR type is not yet taken into account by dnsclient.js."}];
-            }
-            offset += dataLength;
-            answers.push({ name: name.name, type, clazz, ttl, data });
-        }
-        return { transactionID, flags, qdcount, ancount, arcount, adcount, questions, answers };
-    }
-
-    static serialize(question) {
-        const transactionId = crypto.getRandomValues(new Uint8Array(2));
-        const flags   = new Uint8Array([0x01, 0x00]);
-        const qdcount = new Uint8Array([0x00, 0x01]);
-        const labels = question.name.split(".").map(part => {
-            const label = new Array(part.length + 1);
-            label[0] = part.length;
-            for (let i = 0; i < part.length; i++) {
-                label[i + 1] = part.charCodeAt(i);
-            }
-            return label;
-        }).flat(Infinity).concat([0]);
-        const type = new Uint8Array([0x00, question.type]);
-        const clazz = new Uint8Array([0x00, question.clazz]);
-        return Uint8Array.from([
-            ...transactionId, 
-            ...flags, 
-            ...qdcount, 
-            0x00, 0x00, // ANCOUNT
-            0x00, 0x00, // NSCOUNT
-            0x00, 0x00, // ARCOUNT
-            ...labels,
-            ...type,
-            ...clazz
-        ]);
     }
 }
 
