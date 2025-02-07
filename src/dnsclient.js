@@ -229,6 +229,8 @@ export class DnsSerializer {
                     data = this.CNAME.deserialize(view, offset); break;
                 case "SOA":
                     data = this.SOA.deserialize(view, offset); break;
+                case "HINFO":
+                    data = this.HINFO.deserialize(view, offset); break;
                 case "MX":
                     data = this.MX.deserialize(view, offset); break;
                 case "AAAA":
