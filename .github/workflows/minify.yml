@@ -22,34 +22,19 @@ jobs:
       with:
         node-version: '22'
 
-    - name: Install minify
+    - name: Install terser
       run: npm install -g terser
 
-    - name: Minify dnsclient.js
+    - name: Compress and mangle dnsclient.js
       run: terser src/dnsclient.js --compress --mangle --output dist/dnsclient.min.js
 
     - name: Set headers
       run: |
         FILES=("src/dnsclient.js" "dist/dnsclient.min.js")
-        AUTHOR="Yannick Dreher (yannick.dreher@dremaxx.de)"
-        LICENSE="MIT License (https://opensource.org/licenses/MIT)"
-        COPYRIGHT="Copyright © 2024-2025 Yannick Dreher"
-        DATE_CREATED="Friday, 29th November 2024 3:30:10 pm"
         MODIFIED_DATE=$(date +"%A, %dth %B %Y %I:%M:%S %P")
 
         for FILE in "${FILES[@]}"; do
-          HEADER="/*
-          * Project:  dnsclient.js
-          * File:     $FILE
-          * Author:   $AUTHOR
-          * -----
-          * Created:  $DATE_CREATED
-          * Modified: $MODIFIED_DATE
-          * -----
-          * License: $LICENSE
-          * $COPYRIGHT
-          */"
-
+          HEADER=sed "s/{{FILENAME}}/$FILE/; s/{{MODIFIED_DATE}}/$MODIFIED_DATE/" header.tmpl
           sed -i '/\/\*/,/\*\//d' "$FILE"
           echo -e "$HEADER\n$(cat $FILE)" > "$FILE"
         done
