@@ -1,6 +1,6 @@
 import * as dnsclient from '../src/dnsclient.js';
 
-describe('Query type "RRSIG" should return the correct data', () => {
+describe('Record type "RRSIG" should deserialize the data correct', () => {
     const data = new Uint8Array([
         0x00, 0x01, // Type 1 (A Record)
         0x08, // Algorithm 8 (RSA/SHA-256)
@@ -24,7 +24,7 @@ describe('Query type "RRSIG" should return the correct data', () => {
         0x6f, 0x67, 0x73, 0x2e
     ]);
     const view = new DataView(data.buffer);
-    const result = dnsclient.DnsSerializer.RRSIG.deserialize(view, 0, data.length);
+    const result = dnsclient.DnsRecordSerializer.RRSIG.deserialize(view, 0, data.length);
 
     test('typeCovered is A', () => {
         expect(result[0].value).toBe('A');

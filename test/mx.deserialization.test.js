@@ -1,6 +1,6 @@
 import * as dnsclient from '../src/dnsclient.js';
 
-describe('Query type "MX" should return the correct data', () => {
+describe('Record type "MX" should deserialize the data correct', () => {
     const data = new Uint8Array([
         0x00, 0x0A, // Preference: 10 (in hex)
         0x04, 0x6D, 0x61, 0x69, 0x6C, // "mail" (length 4 + 'm', 'a', 'i', 'l')
@@ -9,7 +9,7 @@ describe('Query type "MX" should return the correct data', () => {
         0x00
     ]);
     const view = new DataView(data.buffer);
-    const result = dnsclient.DnsSerializer.MX.deserialize(view, 0);
+    const result = dnsclient.DnsRecordSerializer.MX.deserialize(view, 0);
 
     test('preference is 10', () => {
         expect(result[0].value).toBe(10);

@@ -1,6 +1,6 @@
 import * as dnsclient from '../src/dnsclient.js';
 
-describe('Record type "DNSKEY" should return the correct data', () => {
+describe('Record type "DNSKEY" should deserialize the data correct', () => {
     const data = new Uint8Array([
         0x01, 0x00,       // Flags: 256 (ZSK)
         0x03,             // Protokoll: 3 (DNSSEC)
@@ -18,7 +18,7 @@ describe('Record type "DNSKEY" should return the correct data', () => {
         0x6f, 0x67, 0x73, 0x2e
     ]);
     const view = new DataView(data.buffer);
-    const result = dnsclient.DnsSerializer.DNSKEY.deserialize(view, 0, data.length);
+    const result = dnsclient.DnsRecordSerializer.DNSKEY.deserialize(view, 0, data.length);
 
     test('flag is ZSK', () => {
         expect(result[0].value).toBe('ZSK');

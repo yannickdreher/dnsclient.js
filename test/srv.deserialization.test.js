@@ -1,6 +1,6 @@
 import * as dnsclient from '../src/dnsclient.js';
 
-describe('Query type "SRV" should return the correct data', () => {
+describe('Record type "SRV" should deserialize the data correct', () => {
     const data = new Uint8Array([
         0x00, 0x0A, // Priority = 10
         0x00, 0x05, // Weight = 5
@@ -11,7 +11,7 @@ describe('Query type "SRV" should return the correct data', () => {
         0x00 // Null-Terminator
     ]);
     const view = new DataView(data.buffer);
-    const result = dnsclient.DnsSerializer.SRV.deserialize(view, 0);
+    const result = dnsclient.DnsRecordSerializer.SRV.deserialize(view, 0);
 
     test('priority is 10', () => {
         expect(result[0].value).toBe(10);

@@ -1,6 +1,6 @@
 import * as dnsclient from '../src/dnsclient.js';
 
-describe('Query type "NSEC" should return the correct data', () => {
+describe('Reecord type "NSEC" should deserialize the data correct', () => {
     const data = new Uint8Array([
         0x07, 0x65, 0x78, 0x61, 0x6D, 0x70, 0x6C, 0x65, // "example"
         0x03, 0x6E, 0x65, 0x74, 0x00, // "net" + NULL byte for the domain name end
@@ -8,7 +8,7 @@ describe('Query type "NSEC" should return the correct data', () => {
         0x01, 0x01, // Type Bit Map: A (0x01) and MX (0x02)
     ]);
     const view = new DataView(data.buffer);
-    const result = dnsclient.DnsSerializer.NSEC.deserialize(view, 0, data.length);
+    const result = dnsclient.DnsRecordSerializer.NSEC.deserialize(view, 0, data.length);
 
     test('nextDomain is example.net', () => {
         expect(result[0].value).toBe('example.net');
