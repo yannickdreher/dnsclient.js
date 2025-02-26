@@ -1,6 +1,6 @@
 import * as dnsclient from '../src/dnsclient.js';
 
-describe('Record type "MX" should be serialized correct', () => {
+describe('Record type "MX" should be serialized correctly', () => {
     const rdata = [
         {key: "preference", value: 10},
         {key: "exchange", value: "mail.example.com"}
@@ -12,13 +12,19 @@ describe('Record type "MX" should be serialized correct', () => {
         0x03, 0x63, 0x6F, 0x6D, // "com" (length 3 + 'c', 'o', 'm')
         0x00
     ]);
-    const buffer = dnsclient.DnsRecordSerializer.MX.serialize(rdata);
+
+    const serialized   = dnsclient.DnsRecordSerializer.MX.serialize(rdata);
+    const deserialized = dnsclient.DnsRecordSerializer.MX.deserialize(new DataView(serialized.buffer), 0);
 
     test('Expect buffer to be equal', () => {
-        expect(buffer).toEqual(edata);
+        expect(serialized).toEqual(edata);
     });
 
     test('Expect buffer length to be correct', () => {
-        expect(buffer.byteLength).toBe(edata.byteLength);
+        expect(serialized.byteLength).toBe(edata.byteLength);
+    });
+
+    test('Expect deserialization to match original data', () => {
+        expect(deserialized).toEqual(rdata);
     });
 });

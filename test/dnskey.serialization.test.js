@@ -1,6 +1,6 @@
 import * as dnsclient from '../src/dnsclient.js';
 
-describe('Record type "DNSKEY" should be serialized correct', () => {
+describe('Record type "DNSKEY" should be serialized correctly', () => {
     const rdata = [
         {key: "flag", value: "ZSK"},
         {key: "protocol", value: 3},
@@ -23,13 +23,19 @@ describe('Record type "DNSKEY" should be serialized correct', () => {
         0x7a, 0x79, 0x20, 0x64,
         0x6f, 0x67, 0x73, 0x2e
     ]);
-    const buffer = dnsclient.DnsRecordSerializer.DNSKEY.serialize(rdata);
+
+    const serialized   = dnsclient.DnsRecordSerializer.DNSKEY.serialize(rdata);
+    const deserialized = dnsclient.DnsRecordSerializer.DNSKEY.deserialize(new DataView(serialized.buffer), 0, edata.byteLength);
 
     test('Expect buffer to be equal', () => {
-        expect(buffer).toEqual(edata);
+        expect(serialized).toEqual(edata);
     });
 
     test('Expect buffer length to be correct', () => {
-        expect(buffer.byteLength).toBe(edata.byteLength);
+        expect(serialized.byteLength).toBe(edata.byteLength);
+    });
+
+    test('Expect deserialization to match original data', () => {
+        expect(deserialized).toEqual(rdata);
     });
 });

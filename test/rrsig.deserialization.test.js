@@ -1,6 +1,6 @@
 import * as dnsclient from '../src/dnsclient.js';
 
-describe('Record type "RRSIG" should deserialize the data correct', () => {
+describe('Record type "RRSIG" should deserialize the data correctly', () => {
     const data = new Uint8Array([
         0x00, 0x01, // Type 1 (A Record)
         0x08, // Algorithm 8 (RSA/SHA-256)

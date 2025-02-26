@@ -1,6 +1,6 @@
 import * as dnsclient from '../src/dnsclient.js';
 
-describe('Record type "RRSIG" should be serialized correct', () => {
+describe('Record type "RRSIG" should be serialized correctly', () => {
     const rdata = [
         {key: "typeCovered", value: dnsclient.TYPE.A},
         {key: "algorithm", value: 8},
@@ -34,13 +34,14 @@ describe('Record type "RRSIG" should be serialized correct', () => {
         0x7a, 0x79, 0x20, 0x64,
         0x6f, 0x67, 0x73, 0x2e
     ]);
-    const buffer = dnsclient.DnsRecordSerializer.RRSIG.serialize(rdata);
+
+    const serialized = dnsclient.DnsRecordSerializer.RRSIG.serialize(rdata);
 
     test('Expect buffer to be equal', () => {
-        expect(buffer).toEqual(edata);
+        expect(serialized).toEqual(edata);
     });
 
     test('Expect buffer length to be correct', () => {
-        expect(buffer.byteLength).toBe(edata.byteLength);
+        expect(serialized.byteLength).toBe(edata.byteLength);
     });
 });

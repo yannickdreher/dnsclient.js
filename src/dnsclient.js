@@ -11,12 +11,12 @@
  */
 
 // Enums
-const QR_NAMES = Object.freeze({
+export const QR_NAMES = Object.freeze({
     0: "QUERY",
     1: "RESPONSE"
 });
 
-const OPCODE_NAMES = Object.freeze({
+export const OPCODE_NAMES = Object.freeze({
     0: "QUERY",    // Standard query
     1: "IQUERY",   // Inverse query (obsolete)
     2: "STATUS",   // Server status request
@@ -26,7 +26,7 @@ const OPCODE_NAMES = Object.freeze({
     6: "DSO"       // DNS Stateful Operations
 });
 
-const RCODE_NAMES = Object.freeze({
+export const RCODE_NAMES = Object.freeze({
     0: "NOERROR",    // DNS Query completed successfully
     1: "FORMERR",    // DNS Query Format Error
     2: "SERVFAIL",   // Server failed to complete the DNS request
@@ -48,7 +48,7 @@ const RCODE_NAMES = Object.freeze({
     18: "BADCOOKIE"  // Bad/missing server cookie
 });
 
-const TYPE_NAMES = Object.freeze({
+export const TYPE_NAMES = Object.freeze({
     1: "A",
     2: "NS",
     3: "MD",
@@ -140,7 +140,7 @@ const TYPE_NAMES = Object.freeze({
     32769: "DLV"
 });
 
-const CLASS_NAMES = Object.freeze({
+export const CLASS_NAMES = Object.freeze({
     1: "IN",       // Internet
     2: "CS",       // CSNET (obsolete)
     3: "CH",       // CHAOS
@@ -200,7 +200,6 @@ export class Record {
     type = TYPE.ANY;
     clazz = CLAZZ.ANY;
     ttl = 0;
-    dataLength = 0;
     data  = [];
 }
 
@@ -212,17 +211,6 @@ export class Question {
     }
 }
 
-function concat(...arrays) {
-    const length = arrays.reduce((sum, arr) => sum + arr.length, 0);
-    const result = new Uint8Array(length);
-    let offset = 0;
-    for (const arr of arrays) {
-        result.set(arr, offset);
-        offset += arr.length;
-    }
-    return result;
-}
-
 // Classes
 export class DnsSerializer {
     static deserialize(buffer) {
@@ -230,10 +218,10 @@ export class DnsSerializer {
         const message = new Message();
         message.id = view.getUint16(0);
         message.flags = this.HeaderFlags.deserialize(view.getUint16(2));
-        message.qdcount = view.getUint16(4);
-        message.ancount = view.getUint16(6);
-        message.arcount = view.getUint16(8);
-        message.adcount = view.getUint16(10);
+        const qdcount = view.getUint16(4);
+        const ancount = view.getUint16(6);
+        const arcount = view.getUint16(8);
+        const adcount = view.getUint16(10);
         let offset = 12;
         for (let i = 0; i < qdcount; i++) {
             const question = DnsQuestionSerializer.deserialize(view, offset);
@@ -245,12 +233,12 @@ export class DnsSerializer {
             offset = record.offset;
             message.answers.push(record.record);
         }
-        for (let i = 0; i < ancount; i++) {
+        for (let i = 0; i < arcount; i++) {
             const record = DnsRecordSerializer.deserialize(view, offset);
             offset = record.offset;
             message.authorities.push(record.record);
         }
-        for (let i = 0; i < ancount; i++) {
+        for (let i = 0; i < adcount; i++) {
             const record = DnsRecordSerializer.deserialize(view, offset);
             offset = record.offset;
             message.additionals.push(record.record);
@@ -374,23 +362,24 @@ export class DnsRecordSerializer {
     static deserialize(view, offset) {
         const name = DnsNameSerializer.deserialize(view, offset);
         offset = name.offset;
-        const type = TYPE_NAMES[view.getUint16(offset)];
+        const type = view.getUint16(offset);
         offset += 2;
-        const clazz = CLASS_NAMES[view.getUint16(offset)];
+        const clazz = view.getUint16(offset);
         offset += 2;
-        const ttl = view.getUint32(offset);
-        offset += 4;
+        const ttl = view.getUint16(offset);
+        offset += 2;
         const dataLength = view.getUint16(offset);
         offset += 2;
 
-        const record = new Record(name.name, type, clazz);
+        const record = new Record();
+        record.name = name.name;
+        record.type = TYPE_NAMES[type];
+        record.clazz = CLASS_NAMES[clazz];
         record.ttl = ttl;
-        record.dataLength = dataLength;
-
         if (dataLength === 0) {
             return {record, offset};
         }
-        switch (type) {
+        switch (record.type) {
             case "A":
                 record.data = this.A.deserialize(view, offset, dataLength); break;
             case "NS":
@@ -421,8 +410,6 @@ export class DnsRecordSerializer {
                 record.data = this.DS.deserialize(view, offset, dataLength); break;
             case "CDNSKEY":
                 record.data = this.DNSKEY.deserialize(view, offset, dataLength); break;
-            default:
-                data = [{key: "info", value: "this RR type is not yet taken into account by dnsclient.js."}];
         }
         offset += dataLength;
         return {record, offset};
@@ -903,6 +890,78 @@ export class DnsRecordSerializer {
             view.setUint8(offset, algorithm);
             offset += 1;
             publicKeyBytes.forEach((byte) => view.setUint8(offset++, byte));
+            return new Uint8Array(buffer);
+        }
+    }
+
+    static TSIG = {
+        deserialize(view, offset) {
+            let start = offset;
+            const algorithm = DnsNameSerializer.deserialize(view, offset);
+            start = algorithm.offset;
+            const timestampHigh = view.getUint16(start); // Obere 16 Bit
+            const timestampLow  = view.getUint32(start + 2); // Untere 32 Bit
+            const timestamp     = (BigInt(timestampHigh) << 32n) | BigInt(timestampLow);
+            start += 6;
+            const fudge = view.getUint16(start);
+            start += 2;
+            const macLength = view.getUint16(start);
+            start += 2;
+            const mac = new Uint8Array(view.buffer.slice(start, start + macLength));
+            start += macLength;
+            const originalId = view.getUint16(start);
+            start += 2;
+            const error = view.getUint16(start);
+            start += 2;
+            const otherLength = view.getUint16(start);
+            start += 2;
+            const otherData = new Uint8Array(view.buffer.slice(start, start + otherLength));
+            start += otherLength;
+            const data = [
+                {key: "algorithm", value: algorithm.name},
+                {key: "timestamp", value: timestamp},
+                {key: "fudge", value: fudge},
+                {key: "mac", value: mac},
+                {key: "originalId", value: originalId},
+                {key: "error", value: error},
+                {key: "otherData", value: otherData}
+            ];
+            return data;
+        },
+        serialize(rdata) {
+            const algorithm      = rdata.find(item => item.key === "algorithm").value;
+            const timestamp      = rdata.find(item => item.key === "timestamp").value;
+            const fudge          = rdata.find(item => item.key === "fudge").value;
+            const mac            = rdata.find(item => item.key === "mac").value;
+            const originalId     = rdata.find(item => item.key === "originalId").value;
+            const error          = rdata.find(item => item.key === "error").value;
+            const otherData      = rdata.find(item => item.key === "otherData").value;
+            const algorithmBytes = DnsNameSerializer.serialize(algorithm);
+            const timestampHigh  = Number(timestamp >> 32n) & 0xFFFF;
+            const timestampLow   = Number(timestamp & 0xFFFFFFFFn);
+
+            const length = algorithmBytes.length + mac.length + 16 + otherData.length;
+            const buffer = new ArrayBuffer(length);
+            const view   = new DataView(buffer);
+            let offset   = 0;
+    
+            algorithmBytes.forEach((byte) => view.setUint8(offset++, byte));
+            view.setUint16(offset, timestampHigh);
+            offset += 2;
+            view.setUint32(offset, timestampLow);
+            offset += 4;
+            view.setUint16(offset, fudge);
+            offset += 2;
+            view.setUint16(offset, mac.length);
+            offset += 2;
+            mac.forEach((byte) => view.setUint8(offset++, byte));
+            view.setUint16(offset, originalId);
+            offset += 2;
+            view.setUint16(offset, error);
+            offset += 2;
+            view.setUint16(offset, otherData.length);
+            offset += 2;
+            otherData.forEach((byte) => view.setUint8(offset++, byte));
             return new Uint8Array(buffer);
         }
     }

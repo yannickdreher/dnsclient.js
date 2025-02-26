@@ -3,13 +3,16 @@ import * as dnsclient from '../src/dnsclient.js';
 describe('Message should be serialized correctly', () => {
     const message    = new dnsclient.Message();
     message.id       = 1234;
+    message.flags.qr = dnsclient.QR_NAMES[0];
+    message.flags.opcode = dnsclient.OPCODE_NAMES[0];
+    message.flags.rcode  = dnsclient.RCODE_NAMES[0];
     message.flags.rd = 1; // Recursion
 
-    const question = new dnsclient.Question("example.com", dnsclient.TYPE.A, dnsclient.CLAZZ.IN);
+    const question = new dnsclient.Question("example.com", "A", "IN");
     const record   = new dnsclient.Record();
     record.name    = "example.com";
-    record.type    = dnsclient.TYPE.A;
-    record.clazz   = dnsclient.CLAZZ.IN;
+    record.type    = "A";
+    record.clazz   = "IN";
     record.ttl     = 8600;
     record.data    = [{key: "ipv4", value: "192.0.2.1"}];
 
@@ -18,7 +21,7 @@ describe('Message should be serialized correctly', () => {
     message.authorities.push(record);
     message.additionals.push(record);
 
-    const edata = new Uint8Array([
+    const serialized = new Uint8Array([
         0x04, 0xD2, 0x01, 0x00,  // Header
         0x00, 0x01, 0x00, 0x01,  // Fragen / Antworten
         0x00, 0x01, 0x00, 0x01,  // Autorität / Zusatz
@@ -61,13 +64,9 @@ describe('Message should be serialized correctly', () => {
         0xC0, 0x00, 0x02, 0x01,  // 192.0.2.1
     ]);
 
-    const serialized   = dnsclient.DnsSerializer.serialize(message);
+    const deserialized = dnsclient.DnsSerializer.deserialize(serialized.buffer);
 
-    test('Expect buffer to be equal', () => {
-        expect(serialized).toEqual(edata);
-    });
-
-    test('Expect buffer length to be correct', () => {
-        expect(serialized.byteLength).toBe(edata.byteLength);
+    test('Expect deserialization to match original data', () => {
+        expect(deserialized).toEqual(message);
     });
 });

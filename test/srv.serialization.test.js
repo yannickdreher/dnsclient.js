@@ -1,6 +1,6 @@
 import * as dnsclient from '../src/dnsclient.js';
 
-describe('Record type "SRV" should be serialized correct', () => {
+describe('Record type "SRV" should be serialized correctly', () => {
     const rdata = [
         {key: "priority", value: 10},
         {key: "weight", value: 5},
@@ -16,13 +16,19 @@ describe('Record type "SRV" should be serialized correct', () => {
         0x03, 0x63, 0x6F, 0x6D, // "com"
         0x00 // Null-Terminator
     ]);
-    const buffer = dnsclient.DnsRecordSerializer.SRV.serialize(rdata);
+
+    const serialized   = dnsclient.DnsRecordSerializer.SRV.serialize(rdata);
+    const deserialized = dnsclient.DnsRecordSerializer.SRV.deserialize(new DataView(serialized.buffer), 0);
 
     test('Expect buffer to be equal', () => {
-        expect(buffer).toEqual(edata);
+        expect(serialized).toEqual(edata);
     });
 
     test('Expect buffer length to be correct', () => {
-        expect(buffer.byteLength).toBe(edata.byteLength);
+        expect(serialized.byteLength).toBe(edata.byteLength);
+    });
+
+    test('Expect deserialization to match original data', () => {
+        expect(deserialized).toEqual(rdata);
     });
 });
