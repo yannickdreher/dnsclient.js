@@ -1,15 +1,14 @@
 import * as dnsclient from '../src/dnsclient.js';
 
 describe('Record type "TSIG" should be serialized correctly', () => {
-    const rdata = [
-        {key: "algorithm", value: "hmac-sha256"},
-        {key: "timestamp", value: 1708780800n},
-        {key: "fudge", value: 300},
-        {key: "mac", value: new Uint8Array([1, 2, 3, 4, 5, 6])},
-        {key: "originalId", value: 12345},
-        {key: "error", value: 0},
-        {key: "otherData", value: new Uint8Array([])}
-    ];
+    let rdata = new dnsclient.TsigRecordData();
+    rdata.algorithm = "hmac-sha256";
+    rdata.timestamp = 1708780800n;
+    rdata.fudge = 300;
+    rdata.mac = new Uint8Array([1, 2, 3, 4, 5, 6]);
+    rdata.originalId = 12345;
+    rdata.error = 0;
+    rdata.otherData = new Uint8Array([]);
 
     const edata = new Uint8Array([
         0x0B, 0x68, 0x6D, 0x61, 0x63, 0x2D, // "hmac-"
