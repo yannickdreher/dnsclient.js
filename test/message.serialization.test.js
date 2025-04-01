@@ -1,7 +1,7 @@
 import * as dnsclient from '../src/dnsclient.js';
 
 describe('Message should be serialized correctly', () => {
-    const message    = new dnsclient.Message();
+    const message    = new dnsclient.QueryMessage();
     message.id       = 1234;
     message.flags.rd = 1; // Recursion
 

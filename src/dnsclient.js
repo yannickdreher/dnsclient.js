@@ -400,13 +400,13 @@ export class DnsSerializer {
 
     static HeaderFlags = {
         deserialize(buffer) {
-            const qr = QR_NAMES[(buffer >> 15) & 1];
-            const opcode = OPCODE_NAMES[(buffer >> 11) & 0xF];
+            const qr = (buffer >> 15) & 1;
+            const opcode = (buffer >> 11) & 0xF;
             const aa = (buffer >> 10) & 1;
             const tc = (buffer >> 9) & 1;
             const rd = (buffer >> 8) & 1;
             const ra = (buffer >> 7) & 1;
-            const rcode = RCODE_NAMES[buffer & 0xF]; 
+            const rcode = buffer & 0xF; 
             return {qr, opcode, aa, tc, rd, ra, rcode};
         },
         serialize(view, offset, flags) {
@@ -481,19 +481,11 @@ export class DnsRecordSerializer {
         const clazz = view.getUint16(offset);
         offset += 2;
         if (question) {
-            const record = new Question(
-                name = name.name,
-                type = TYPE_NAMES[type],
-                clazz = CLASS_NAMES[clazz]
-            );
+            const record = new Question(name.name, type, clazz);
             return {record, offset};
         }
         if (zone) {
-            const record = new Zone(
-                name = name.name,
-                type = TYPE_NAMES[type],
-                clazz = CLASS_NAMES[clazz]
-            );
+            const record = new Zone(name.name, type, clazz);
             return {record, offset};
         }
         const ttl = view.getUint16(offset);
@@ -502,44 +494,44 @@ export class DnsRecordSerializer {
         offset += 2;
         const record = new Record();
         record.name = name.name;
-        record.type = TYPE_NAMES[type];
-        record.clazz = CLASS_NAMES[clazz];
+        record.type = type;
+        record.clazz = clazz;
         record.ttl = ttl;
         if (dataLength === 0) {
             return {record, offset};
         }
         switch (record.type) {
-            case "A":
+            case TYPE.A:
                 record.data = this.A.deserialize(view, offset, dataLength); break;
-            case "NS":
+            case TYPE.NS:
                 record.data = this.NS.deserialize(view, offset); break;
-            case "CNAME":
+            case TYPE.CNAME:
                 record.data = this.CNAME.deserialize(view, offset); break;
-            case "SOA":
+            case TYPE.SOA:
                 record.data = this.SOA.deserialize(view, offset); break;
-            case "HINFO":
+            case TYPE.HINFO:
                 record.data = this.HINFO.deserialize(view, offset); break;
-            case "MX":
+            case TYPE.MX:
                 record.data = this.MX.deserialize(view, offset); break;
-            case "AAAA":
+            case TYPE.AAAA:
                 record.data = this.AAAA.deserialize(view, offset, dataLength); break;
-            case "SRV":
+            case TYPE.SRV:
                 record.data = this.SRV.deserialize(view, offset); break;
-            case "DS":
+            case TYPE.DS:
                 record.data = this.DS.deserialize(view, offset, dataLength); break;
-            case "TXT":
+            case TYPE.TXT:
                 record.data = this.TXT.deserialize(view, offset); break;
-            case "RRSIG":
+            case TYPE.RRSIG:
                 record.data = this.RRSIG.deserialize(view, offset, dataLength); break;
-            case "NSEC":
+            case TYPE.NSEC:
                 record.data = this.NSEC.deserialize(view, offset, dataLength); break;
-            case "DNSKEY":
+            case TYPE.DNSKEY:
                 record.data = this.DNSKEY.deserialize(view, offset, dataLength); break;
-            case "CDS":
+            case TYPE.CDS:
                 record.data = this.DS.deserialize(view, offset, dataLength); break;
-            case "CDNSKEY":
+            case TYPE.CDNSKEY:
                 record.data = this.DNSKEY.deserialize(view, offset, dataLength); break;
-            case "TSIG":
+            case TYPE.TSIG:
                 record.data = this.TSIG.deserialize(view, offset); break;
         }
         offset += dataLength;
@@ -562,36 +554,36 @@ export class DnsRecordSerializer {
             return offset;
         }
         let buffer = new Uint8Array(0);
-        switch (TYPE_NAMES[record.type]) {
-            case "A":
+        switch (record.type) {
+            case TYPE.A:
                 buffer = this.A.serialize(record.data); break;
-            case "NS":
+            case TYPE.NS:
                 buffer = this.NS.serialize(record.data); break;
-            case "CNAME":
+            case TYPE.CNAME:
                 buffer = this.CNAME.serialize(record.data); break;
-            case "SOA":
+            case TYPE.SOA:
                 buffer = this.SOA.serialize(record.data); break;
-            case "HINFO":
+            case TYPE.HINFO:
                 buffer = this.HINFO.serialize(record.data); break;
-            case "MX":
+            case TYPE.MX:
                 buffer = this.MX.serialize(record.data); break;
-            case "AAAA":
+            case TYPE.AAAA:
                 buffer = this.AAAA.serialize(record.data); break;
-            case "SRV":
+            case TYPE.SRV:
                 buffer = this.SRV.serialize(record.data); break;
-            case "DS":
+            case TYPE.DS:
                 buffer = this.DS.serialize(record.data); break;
-            case "TXT":
+            case TYPE.TXT:
                 buffer = this.TXT.serialize(record.data); break;
-            case "RRSIG":
+            case TYPE.RRSIG:
                 buffer = this.RRSIG.serialize(record.data); break;
-            case "DNSKEY":
+            case TYPE.DNSKEY:
                 buffer = this.DNSKEY.serialize(record.data); break;
-            case "CDS":
+            case TYPE.CDS:
                 buffer = this.DS.serialize(record.data); break;
-            case "CDNSKEY":
+            case TYPE.CDNSKEY:
                 buffer = this.DNSKEY.serialize(record.data); break;
-            case "TSIG":
+            case TYPE.TSIG:
                 buffer = this.TSIG.serialize(record.data); break;
         }
         view.setUint16(offset, buffer.byteLength, false);
