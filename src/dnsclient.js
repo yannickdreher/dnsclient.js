@@ -188,7 +188,7 @@ export const OPCODE = Object.freeze({
 })
 
 // Models
-export class Message {
+class Message {
     id = Math.floor(Math.random() * 0x10000);
     flags = {
         qr: 0,
@@ -199,10 +199,36 @@ export class Message {
         ra: 0,
         rcode: 0
     };
+}
+
+export class QueryMessage extends Message {
+    qdcount = 0;
+    ancount = 0;
+    nscount = 0;
+    arcount = 0;
     questions = [];
     answers = [];
     authorities = [];
     additionals = [];
+    constructor() {
+        super();
+        this.flags.opcode = OPCODE.QUERY;
+    }
+}
+
+export class UpdateMessage extends Message {
+    zcount  = 0;
+    prcount = 0;
+    upcount = 0;
+    adcount = 0;
+    zones = [];
+    prerequisites = [];
+    updates = [];
+    additionals = [];
+    constructor() {
+        super();
+        this.flags.opcode = OPCODE.UPDATE;
+    }
 }
 
 export class Record {
@@ -223,15 +249,11 @@ export class Question {
     }
 }
 
-export class TsigRecordData {
-    timestamp = BigInt(Math.floor(Date.now()));
-    mac = new Uint8Array([]);
-    error = 0;
-    constructor(algorithm = "hmac-sha256", fudge = 300, originalId = 0, otherData = new Uint8Array([])) {
-        this.algorithm = algorithm;
-        this.fudge = fudge;
-        this.originalId = originalId;
-        this.otherData = otherData;
+export class Zone {
+    constructor(name, type = TYPE.SOA, clazz = CLAZZ.IN) {
+        this.name = name;
+        this.type = type;
+        this.clazz = clazz;
     }
 }
 
@@ -239,35 +261,72 @@ export class TsigRecordData {
 export class DnsSerializer {
     static deserialize(buffer) {
         const view = new DataView(buffer);
-        const message = new Message();
-        message.id = view.getUint16(0);
-        message.flags = this.HeaderFlags.deserialize(view.getUint16(2));
-        const qdcount = view.getUint16(4);
-        const ancount = view.getUint16(6);
-        const arcount = view.getUint16(8);
-        const adcount = view.getUint16(10);
-        let offset = 12;
-        for (let i = 0; i < qdcount; i++) {
-            const question = DnsQuestionSerializer.deserialize(view, offset);
-            offset = question.offset;
-            message.questions.push(question.question);
+        const id = view.getUint16(0);
+        const flags = this.HeaderFlags.deserialize(view.getUint16(2));
+        let message;
+        let offset = 4;
+        switch (flags.opcode) {
+            case OPCODE.QUERY:
+                message = new QueryMessage();
+                message.id = id;
+                message.flags = flags;
+                message.qdcount = view.getUint16(4);
+                message.ancount = view.getUint16(6);
+                message.nscount = view.getUint16(8);
+                message.arcount = view.getUint16(10);
+                offset += 8;
+                for (let i = 0; i < message.qdcount; i++) {
+                    const record = DnsRecordSerializer.deserialize(view, offset, true, false);
+                    offset = record.offset;
+                    message.questions.push(record.record);
+                }
+                for (let i = 0; i < message.ancount; i++) {
+                    const record = DnsRecordSerializer.deserialize(view, offset);
+                    offset = record.offset;
+                    message.answers.push(record.record);
+                }
+                for (let i = 0; i < message.nscount; i++) {
+                    const record = DnsRecordSerializer.deserialize(view, offset);
+                    offset = record.offset;
+                    message.authorities.push(record.record);
+                }
+                for (let i = 0; i < message.arcount; i++) {
+                    const record = DnsRecordSerializer.deserialize(view, offset);
+                    offset = record.offset;
+                    message.additionals.push(record.record);
+                }
+                return message;
+            case OPCODE.UPDATE:
+                message = new UpdateMessage();
+                message.id = id;
+                message.flags = flags;
+                message.zcount = view.getUint16(4);
+                message.prcount = view.getUint16(6);
+                message.upcount = view.getUint16(8);
+                message.adcount = view.getUint16(10);
+                offset += 8;
+                for (let i = 0; i < message.zcount; i++) {
+                    const record = DnsRecordSerializer.deserialize(view, offset, false, true);
+                    offset = record.offset;
+                    message.zones.push(record.record);
+                }
+                for (let i = 0; i < message.prcount; i++) {
+                    const record = DnsRecordSerializer.deserialize(view, offset);
+                    offset = record.offset;
+                    message.prerequisites.push(record.record);
+                }
+                for (let i = 0; i < message.upcount; i++) {
+                    const record = DnsRecordSerializer.deserialize(view, offset);
+                    offset = record.offset;
+                    message.updates.push(record.record);
+                }
+                for (let i = 0; i < message.adcount; i++) {
+                    const record = DnsRecordSerializer.deserialize(view, offset);
+                    offset = record.offset;
+                    message.additionals.push(record.record);
+                }
+                return message;
         }
-        for (let i = 0; i < ancount; i++) {
-            const record = DnsRecordSerializer.deserialize(view, offset);
-            offset = record.offset;
-            message.answers.push(record.record);
-        }
-        for (let i = 0; i < arcount; i++) {
-            const record = DnsRecordSerializer.deserialize(view, offset);
-            offset = record.offset;
-            message.authorities.push(record.record);
-        }
-        for (let i = 0; i < adcount; i++) {
-            const record = DnsRecordSerializer.deserialize(view, offset);
-            offset = record.offset;
-            message.additionals.push(record.record);
-        }
-        return message;
     }
 
     static serialize(message) {
@@ -288,7 +347,7 @@ export class DnsSerializer {
             offset += 2;
             if (message.questions.length > 0) {
                 for (const record of message.questions) {
-                    offset = DnsQuestionSerializer.serialize(view, offset, record);
+                    offset = DnsRecordSerializer.serialize(view, offset, record);
                 }
             }
             if (message.answers.length > 0) {
@@ -307,7 +366,7 @@ export class DnsSerializer {
                 }
             }
         } else if (message.flags.opcode === OPCODE.UPDATE) {
-            view.setUint16(offset, 1, false);
+            view.setUint16(offset, message.zones.length, false);
             offset += 2;
             view.setUint16(offset, message.prerequisites.length, false);
             offset += 2;
@@ -315,7 +374,11 @@ export class DnsSerializer {
             offset += 2;
             view.setUint16(offset, message.additionals.length, false);
             offset += 2;
-            offset = DnsQuestionSerializer.serialize(view, offset, message.zone);
+            if (message.zones.length > 0) {
+                for (const record of message.zones) {
+                    offset = DnsRecordSerializer.serialize(view, offset, record);
+                }
+            }
             if (message.prerequisites.length > 0) {
                 for (const record of message.prerequisites) {
                     offset = DnsRecordSerializer.serialize(view, offset, record);
@@ -410,18 +473,33 @@ export class DnsNameSerializer {
 }
 
 export class DnsRecordSerializer {
-    static deserialize(view, offset) {
+    static deserialize(view, offset, question = false, zone = false) {
         const name = DnsNameSerializer.deserialize(view, offset);
         offset = name.offset;
         const type = view.getUint16(offset);
         offset += 2;
         const clazz = view.getUint16(offset);
         offset += 2;
+        if (question) {
+            const record = new Question(
+                name = name.name,
+                type = TYPE_NAMES[type],
+                clazz = CLASS_NAMES[clazz]
+            );
+            return {record, offset};
+        }
+        if (zone) {
+            const record = new Zone(
+                name = name.name,
+                type = TYPE_NAMES[type],
+                clazz = CLASS_NAMES[clazz]
+            );
+            return {record, offset};
+        }
         const ttl = view.getUint16(offset);
         offset += 2;
         const dataLength = view.getUint16(offset);
         offset += 2;
-
         const record = new Record();
         record.name = name.name;
         record.type = TYPE_NAMES[type];
@@ -475,6 +553,9 @@ export class DnsRecordSerializer {
         offset += 2;
         view.setUint16(offset, record.clazz, false);
         offset += 2;
+        if (record instanceof Question || record instanceof Zone) {
+            return offset;
+        }
         view.setUint16(offset, record.ttl, false);
         offset += 2;
         if (record.data === undefined || record.data.length === 0) {
@@ -955,7 +1036,7 @@ export class DnsRecordSerializer {
     static TSIG = {
         deserialize(view, offset) {
             let start = offset;
-            let rdata = new TsigRecordData();
+            let rdata = {};
             const algorithm = DnsNameSerializer.deserialize(view, offset);
             rdata.algorithm = algorithm.name;
             start = algorithm.offset;
@@ -1011,37 +1092,14 @@ export class DnsRecordSerializer {
     }
 }
 
-export class DnsQuestionSerializer {
-    static deserialize(view, offset) {
-        const name = DnsNameSerializer.deserialize(view, offset);
-        offset = name.offset;
-        const type = TYPE_NAMES[view.getUint16(offset)];
-        offset += 2;
-        const clazz = CLASS_NAMES[view.getUint16(offset)];
-        offset += 2;
-        const question = new Question(name.name, type, clazz);
-        return {question, offset};
-    }
-
-    static serialize(view, offset, record) {
-        const nameBytes = DnsNameSerializer.serialize(record.name);
-        nameBytes.forEach((byte) => view.setUint8(offset++, byte));
-        view.setUint16(offset, record.type,  false);
-        offset += 2;
-        view.setUint16(offset, record.clazz, false);
-        offset += 2;
-        return offset;
-    }
-}
-
 // Functions
 export async function sign(message, name, secret) {
-    const tsig = {
-        name: name,
-        clazz: CLAZZ.ANY,
-        type: TYPE.TSIG,
-        ttl: 0,
-        data: {
+    const tsig = new Record(
+        name,
+        TYPE.TSIG,
+        CLAZZ.ANY,
+        0,
+        {
             algorithm: "hmac-sha256",
             timestamp: BigInt(Math.floor(Date.now())),
             fudge: 300,
@@ -1050,10 +1108,9 @@ export async function sign(message, name, secret) {
             error: 0,
             otherData: []
         }
-    }
-
+    );
     message.additionals.push(tsig);
-    const data = DnsSerializer.serialize(message);
+    const buffer = DnsSerializer.serialize(message);
 
     const key = await crypto.subtle.importKey(
         "raw",
@@ -1066,7 +1123,7 @@ export async function sign(message, name, secret) {
     const sig = await crypto.subtle.sign(
         "HMAC",
         key,
-        data
+        buffer
     );
 
     tsig.data.mac = btoa(String.fromCharCode(...new Uint8Array(sig)));

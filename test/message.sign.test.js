@@ -1,47 +1,12 @@
 import * as dnsclient from '../src/dnsclient.js';
 
 describe('Message should be serialized correctly', () => {
-    let message = {
-        id: 1234,
-        flags: {
-            qr: 0,
-            opcode: dnsclient.OPCODE.UPDATE,
-            aa: 0,
-            tc: 0,
-            rd: 0,
-            ra: 0,
-            rcode: 0
-        },
-        zone: {
-            name: "example.com",
-            type: dnsclient.TYPE.SOA,
-            clazz: dnsclient.CLAZZ.IN
-        },
-        prerequisites: [
-            {
-                name: "test.example.com",
-                type: dnsclient.TYPE.A,
-                clazz: dnsclient.CLAZZ.ANY,
-                ttl: 0
-            }
-        ],
-        updates: [
-            {
-                name: "test.example.com",
-                type: dnsclient.TYPE.A,
-                clazz: dnsclient.CLAZZ.ANY,
-                ttl: 0
-            },
-            {
-                name: "test.example.com",
-                type: dnsclient.TYPE.A,
-                clazz: dnsclient.CLAZZ.IN,
-                ttl: 8600,
-                data: [{key: "ipv4", value: "192.0.2.1"}]
-            }
-        ],
-        additionals: []
-    };
+    let message = new dnsclient.UpdateMessage();
+    message.id = 1234;
+    message.zones.push(new dnsclient.Zone("example.com"));
+    message.prerequisites.push(new dnsclient.Record("test.example.com", dnsclient.TYPE.A, dnsclient.CLAZZ.ANY, 0));
+    message.updates.push(new dnsclient.Record("test.example.com", dnsclient.TYPE.A, dnsclient.CLAZZ.ANY, 0));
+    message.updates.push(new dnsclient.Record("test.example.com", dnsclient.TYPE.A, dnsclient.CLAZZ.IN, 8600, [{key: "ipv4", value: "192.0.2.1"}]));
 
     const edata = new Uint8Array([
         0x04, 0xD2, 0x01, 0x00,  // Header

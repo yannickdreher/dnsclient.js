@@ -1,7 +1,7 @@
 import * as dnsclient from '../src/dnsclient.js';
 
 describe('Record type "TSIG" should be serialized correctly', () => {
-    let rdata = new dnsclient.TsigRecordData();
+    let rdata = {};
     rdata.algorithm = "hmac-sha256";
     rdata.timestamp = 1708780800n;
     rdata.fudge = 300;
