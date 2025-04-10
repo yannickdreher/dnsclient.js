@@ -1,0 +1,24 @@
+import * as dnsclient from '../src/dnsclient.js';
+
+describe('Message should be serialized correctly', () => {
+    let message = new dnsclient.UpdateMessage();
+
+    message.zones.push(new dnsclient.Zone("dremaxx.de"));
+    message.prerequisites.push(new dnsclient.Record("test.dremaxx.de", dnsclient.TYPE.A, dnsclient.CLAZZ.ANY, 0));
+    message.updates.push(new dnsclient.Record("test.dremaxx.de", dnsclient.TYPE.A, dnsclient.CLAZZ.ANY, 0));
+    message.updates.push(new dnsclient.Record("test.dremaxx.de", dnsclient.TYPE.A, dnsclient.CLAZZ.IN, 60, [{key: "ipv4", value: "192.0.2.3"}]));
+    
+    message.zcount  = message.zones.length;
+    message.prcount = message.prerequisites.length;
+    message.upcount = message.updates.length;
+    let response;
+
+    beforeAll(async () => {
+        response = await dnsclient.query("https://theo.dremaxx.de/dns-query", message);
+        console.dir(response, {depth: null});
+    });
+
+    test('Expect rcode to be 0 (=NOERROR)', () => {
+        expect(response.result.flags.rcode).toBe(0);
+    });
+});
