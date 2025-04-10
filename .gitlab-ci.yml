@@ -1,9 +1,20 @@
 stages:
+  - test
   - build
 
-minify_and_update_header:
+test:
+  image: node:20
+  stage: test
+  script:
+    - echo "Running tests..."
+    - npm test
+
+build:
   image: node:20
   stage: build
+  needs:
+    - job: test
+      artifacts: false
   script:
     - echo "Installing terser..."
     - npm install terser -g
@@ -26,6 +37,6 @@ minify_and_update_header:
     - git config user.name "CI BOT"
     - git config user.email "project_5_bot_4b1274d4e2cb212b3e763c5dccfe1fed@noreply.gitlab.dremaxx.de"
     - git add src/dnsclient.js dist/dnsclient.min.js
-    - git commit -m "minified dnsclient.js" || echo "No changes to commit"
+    - git commit -m "minified and updated header" || echo "No changes to commit"
     - git push https://oauth2:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git HEAD:$CI_COMMIT_REF_NAME
   when: manual
