@@ -36,7 +36,7 @@ describe('Message should be serialized correctly', () => {
         0x00,                    // Nullterminierung der Domain
         0x00, 0x01,              // Typ A (IPv4-Adresse)
         0x00, 0x01,              // Klasse IN (Internet)
-        0x21, 0x98,              // TTL 8600
+        0x00, 0x00, 0x21, 0x98,  // TTL 8600
         0x00, 0x04,              // Data Length
         0xC0, 0x00, 0x02, 0x01,  // 192.0.2.1
         //authorities
@@ -46,7 +46,7 @@ describe('Message should be serialized correctly', () => {
         0x00,                    // Nullterminierung der Domain
         0x00, 0x01,              // Typ A (IPv4-Adresse)
         0x00, 0x01,              // Klasse IN (Internet)
-        0x21, 0x98,              // TTL 8600
+        0x00, 0x00, 0x21, 0x98,  // TTL 8600
         0x00, 0x04,              // Data Length
         0xC0, 0x00, 0x02, 0x01,  // 192.0.2.1
         //additionals
@@ -56,7 +56,7 @@ describe('Message should be serialized correctly', () => {
         0x00,                    // Nullterminierung der Domain
         0x00, 0x01,              // Typ A (IPv4-Adresse)
         0x00, 0x01,              // Klasse IN (Internet)
-        0x21, 0x98,              // TTL 8600
+        0x00, 0x00, 0x21, 0x98,  // TTL 8600
         0x00, 0x04,              // Data Length
         0xC0, 0x00, 0x02, 0x01,  // 192.0.2.1
     ]);
