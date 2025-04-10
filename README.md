@@ -1,6 +1,5 @@
-[![Tests](https://github.com/yannickdreher/dnsclient.js/actions/workflows/tests.yml/badge.svg)](https://github.com/yannickdreher/dnsclient.js/actions/workflows/tests.yml)
-[![Minify](https://github.com/yannickdreher/dnsclient.js/actions/workflows/minify.yml/badge.svg)](https://github.com/yannickdreher/dnsclient.js/actions/workflows/minify.yml)
-[![Publish](https://github.com/yannickdreher/dnsclient.js/actions/workflows/publish.yml/badge.svg)](https://github.com/yannickdreher/dnsclient.js/actions/workflows/publish.yml)
+[![pipeline status](https://gitlab.dremaxx.de/yannick/dnsclient.js/badges/main/pipeline.svg)](https://gitlab.dremaxx.de/yannick/dnsclient.js/-/commits/main)
+[![Latest Release](https://gitlab.dremaxx.de/yannick/dnsclient.js/-/badges/release.svg)](https://gitlab.dremaxx.de/yannick/dnsclient.js/-/releases)
 [![jsDelivr](https://data.jsdelivr.com/v1/package/npm/dnsclient.js/badge)](https://www.jsdelivr.com/package/npm/dnsclient.js)
 
 # dnsclient.js
@@ -11,8 +10,42 @@ It supports various DNS record types and handles DNS response parsing, including
 ## Features
 
 - Perform DNS queries over HTTPS
-- Support for multiple DNS record types (A, NS, CNAME, SOA, MX, TXT, AAAA, RSIG, DNSKEY, ANY, ...)
+- Support for multiple DNS record types
 - Handles DNS response parsing and name compression
+- Supports both serialization and deserialization
+- Supports both DNS queries and DNS updates
+    - TSIG authentication is currently not yet supported or does not yet work
+
+Available types:
+| Type    | Code |
+|---------|------|
+| A       | 1    |
+| NS      | 2    |
+| CNAME   | 5    |
+| SOA     | 6    |
+| HINFO   | 13   |
+| MX      | 15   |
+| TXT     | 16   |
+| AAAA    | 28   |
+| SRV     | 33   |
+| DS      | 43   |
+| RRSIG   | 46   |
+| NSEC    | 47   |
+| DNSKEY  | 48   |
+| CDS     | 59   |
+| CDNSKEY | 60   |
+| TSIG    | 250  |
+| ANY     | 255  |
+
+Available classes:
+| Calss   | Code |
+|---------|------|
+| IN      | 1    |
+| CS      | 2    |
+| CH      | 3    |
+| HS      | 4    |
+| NONE    | 254  |
+| ANY     | 255  |
 
 ## Installation
 
@@ -27,116 +60,80 @@ or load it from CDN:
 ```
 
 ## Usage
+### DNS query
+```javascript
+import * as dnsclient from './dnsclient.min.js';
 
-```JavaScript
-import * as DNS from './dnsclient.min.js';
-
-const question = new DNS.Question(<domainname>, DNS.TYPE.A, DNS.CLAZZ.IN);
+let message  = new dnsclient.QueryMessage();
+let question = new dnsclient.Question("google.com", dnsclient.TYPE.A, dnsclient.CLAZZ.IN);
+message.questions.push(question);
+message.qdcount  = message.questions.length;
 
 try {
-    const result = await DNS.query('https://dns.dremaxx.de/dns-query', question);
-    console.log(result);
-} catch {
-    console.log('Error in DNS query.');
+    response = await dnsclient.query("https://dns.dremaxx.de/dns-query", message);
+    console.dir(result, {depth: null});
+} catch (error) {
+    console.log(error.message);
 }
 ```
 
-Available types and classes:
-```JavaScript
-export const TYPE = Object.freeze({
-    A: 1,
-    NS: 2,
-    CNAME: 5,
-    SOA: 6,
-    HINFO: 13,
-    MX: 15,
-    TXT: 16,
-    AAAA: 28,
-    SRV: 33,
-    DS: 43,
-    RRSIG: 46,
-    NSEC: 47,
-    DNSKEY: 48,
-    CDS: 59,
-    CDNSKEY: 60,
-    ANY: 255
-});
-
-export const CLAZZ = Object.freeze({
-    IN: 1,
-    CS: 2,
-    CH: 3,
-    HS: 4,
-    NONE: 254,
-    ANY: 255
-})
-```
 The answer to a query can look like this, for example:
-```Json
+```json
 {
-    "message": {
-        "transactionID": 15136,
-        "flags": {
-            "qr": "RESPONSE",
-            "opcode": "QUERY",
-            "aa": 1,
-            "tc": 0,
-            "rd": 1,
-            "ra": 1,
-            "rcode": "NOERROR"
-        },
-        "qdcount": 1,
-        "ancount": 1,
-        "arcount": 0,
-        "adcount": 0,
-        "questions": [
-            {
-                "name": "dremaxx.de",
-                "type": "SOA",
-                "clazz": "IN"
+    result: QueryMessage {
+        id: 7353,
+        flags: { qr: 1, opcode: 0, aa: 1, tc: 0, rd: 1, ra: 1, rcode: 0 },
+        qdcount: 1,
+        ancount: 1,
+        nscount: 0,
+        arcount: 0,
+        questions: [ Question { name: 'dremaxx.de', type: 6, clazz: 1 } ],
+        answers: [
+            Record {
+            name: 'dremaxx.de',
+            type: 6,
+            clazz: 1,
+            ttl: 3600,
+            data: [
+                { key: 'mname', value: 'theo.dremaxx.de' },
+                { key: 'rname', value: 'hostmaster.dremaxx.de' },
+                { key: 'serial', value: 2025031079 },
+                { key: 'refresh', value: 3600 },
+                { key: 'retry', value: 900 },
+                { key: 'expire', value: 2419200 },
+                { key: 'minimum', value: 60 }
+            ]
             }
         ],
-        "answers": [
-            {
-                "name": "dremaxx.de",
-                "type": "SOA",
-                "clazz": "IN",
-                "ttl": 3600,
-                "data": [
-                    {
-                        "key": "mname",
-                        "value": "theo.dremaxx.de"
-                    },
-                    {
-                        "key": "rname",
-                        "value": "hostmaster.dremaxx.de"
-                    },
-                    {
-                        "key": "serial",
-                        "value": 2024112610
-                    },
-                    {
-                        "key": "refresh",
-                        "value": 3600
-                    },
-                    {
-                        "key": "retry",
-                        "value": 900
-                    },
-                    {
-                        "key": "expire",
-                        "value": 2419200
-                    },
-                    {
-                        "key": "minimum",
-                        "value": 3600
-                    }
-                ]
-            }
-        ]
+        authorities: [],
+        additionals: []
     },
-    "latency": 60
+    latency: 388
 }
 ```
-## Contributing
-Contributions are welcome! Please open an issue or submit a pull request on GitHub.
+### DNS update
+```javascript
+import * as dnsclient from './dnsclient.min.js';
+
+let message = new dnsclient.UpdateMessage();
+const zone = new dnsclient.Zone("dremaxx.de");
+const preq = new dnsclient.Record("test.dremaxx.de", dnsclient.TYPE.A, dnsclient.CLAZZ.ANY, 0);
+const update_del = new dnsclient.Record("test.dremaxx.de", dnsclient.TYPE.A, dnsclient.CLAZZ.ANY, 0);
+const update_new = new dnsclient.Record("test.dremaxx.de", dnsclient.TYPE.A, dnsclient.CLAZZ.IN, 60, [{key: "ipv4", value: "192.0.2.3"}]);
+
+message.zones.push(zone);
+message.prerequisites.push(preq);
+message.updates.push(update_del);
+message.updates.push(update_new);
+
+message.zcount  = message.zones.length;
+message.prcount = message.prerequisites.length;
+message.upcount = message.updates.length;
+
+try {
+    response = await dnsclient.query("https://dns.dremaxx.de/dns-query", message);
+    console.dir(result, {depth: null});
+} catch (error) {
+    console.log(error.message);
+}
+```
