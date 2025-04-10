@@ -1,6 +1,6 @@
 {
   "name": "dnsclient.js",
-  "version": "1.0.13",
+  "version": "1.0.0",
   "description": "JavaScript library for performing DNS queries over HTTPS",
   "main": "dist/dnsclient.min.js",
   "type": "module",
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://gitlab.cy.dremaxx.de/yannick/dnsclient.js.git"
+    "url": "git+https://gitlab.dremaxx.de/yannick/dnsclient.js.git"
   },
   "keywords": [
     "DNS",
@@ -21,13 +21,10 @@
   "author": "Yannick Dreher",
   "license": "MIT",
   "bugs": {
-    "url": "https://gitlab.cy.dremaxx.de/yannick/dnsclient.js/-/issues"
+    "url": "https://gitlab.dremaxx.de/yannick/dnsclient.js/-/issues"
   },
-  "homepage": "https://gitlab.cy.dremaxx.de/yannick/dnsclient.js",
+  "homepage": "https://gitlab.dremaxx.de/yannick/dnsclient.js",
   "devDependencies": {
     "jest": "^29.7.0"
-  },
-  "dependencies": {
-    "crypto-js": "^4.2.0"
   }
 }
