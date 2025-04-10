@@ -22,10 +22,10 @@ minify_and_update_header:
             echo -e "$HEADER\n$(cat $FILE)" > "$FILE"
         done
 
-    - echo "📦 Replacing old file (if changed)..."
+    - echo "Commit to repository"
     - |
-        git config --global user.name "CI Bot"
-        git config --global user.email "ci.bot@dremaxx.de"
-        git add src/dnsclient.js dist/dnsclient.min.js
-        git commit -m "minify and update headers" || echo "No changes to commit"
-        git push
+        git config user.email "ci.gitlab@dremaxx.de";
+        git config user.name "CI Bot";
+        git add src/dnsclient.min.js;
+        git commit -m "ci: update minified dnsclient.js [skip ci]";
+        git push https://oauth2:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git HEAD:${CI_COMMIT_REF_NAME};
