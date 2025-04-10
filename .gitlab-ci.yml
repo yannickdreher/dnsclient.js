@@ -1,6 +1,7 @@
 stages:
   - test
   - build
+  - publish
 
 test:
   image: node:20
@@ -15,7 +16,6 @@ build:
   stage: build
   needs:
     - job: test
-      artifacts: false
   script:
     - echo "Installing terser..."
     - npm install terser -g
@@ -41,3 +41,24 @@ build:
     - git commit -m "minified and updated header" || echo "No changes to commit"
     - git push https://oauth2:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git HEAD:$CI_COMMIT_REF_NAME
   when: manual
+
+publish:
+  image: node:20
+  stage: publish
+  needs:
+    - job: test
+    - job: build
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+      when: always
+  script:
+    - echo "//registry.npmjs.org/:_authToken=${NPMJS_TOKEN}" > ~/.npmrc
+    - VERSION=${CI_COMMIT_TAG#v}
+    - npm version "$VERSION" --no-git-tag-version
+    - echo "Commit to repository"
+    - git config user.name "CI BOT"
+    - git config user.email "project_5_bot_4b1274d4e2cb212b3e763c5dccfe1fed@noreply.gitlab.dremaxx.de"
+    - git add package.json
+    - git commit -m "updated package.json" || echo "No changes to commit"
+    - git push https://oauth2:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git HEAD:$CI_COMMIT_REF_NAME
+    - npm publish
