@@ -28,4 +28,4 @@ minify_and_update_header:
         git config user.name "CI Bot";
         git add src/dnsclient.js dist/dnsclient.min.js;
         git commit -m "ci: update minified dnsclient.js [skip ci]";
-        git push https://oauth2:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git HEAD:${CI_COMMIT_REF_NAME};
+        git push https://oauth2:${CI_ACCESS_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git HEAD:${CI_COMMIT_REF_NAME};
