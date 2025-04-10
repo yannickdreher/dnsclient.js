@@ -1,0 +1,31 @@
+stages:
+  - build
+
+minify_and_update_header:
+  image: node:20
+  stage: build
+  script:
+    - echo "Installing terser..."
+    - npm install terser -g
+
+    - echo "Minifying dnsclient.js..."
+    - terser src/dnsclient.js -c -m -o dist/dnsclient.js.min
+
+    - echo "Update headers"
+    - |
+        FILES=("src/dnsclient.js" "dist/dnsclient.min.js")
+        MODIFIED_DATE=$(date +"%A, %dth %B %Y %I:%M:%S %P")
+
+        for FILE in "${FILES[@]}"; do
+            HEADER=$(sed "s#{{FILENAME}}#$FILE#; s#{{MODIFIED_DATE}}#$MODIFIED_DATE#" header.tmpl)
+            sed -i '/\/\*/,/\*\//d' "$FILE"
+            echo -e "$HEADER\n$(cat $FILE)" > "$FILE"
+        done
+
+    - echo "📦 Replacing old file (if changed)..."
+    - |
+        git config --global user.name "CI Bot"
+        git config --global user.email "ci.bot@dremaxx.de"
+        git add src/dnsclient.js dist/dnsclient.min.js
+        git commit -m "minify and update headers" || echo "No changes to commit"
+        git push
