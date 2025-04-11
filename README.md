@@ -65,9 +65,9 @@ or load it from CDN:
 import * as dnsclient from './dnsclient.min.js';
 
 const message  = new dnsclient.QueryMessage();
-const question = new dnsclient.Question("google.com", dnsclient.TYPE.A, dnsclient.CLAZZ.IN);
+const question = new dnsclient.Question("dremaxx.de", dnsclient.TYPE.A, dnsclient.CLAZZ.IN);
 message.questions.push(question);
-message.qdcount  = message.questions.length;
+message.qdcount = message.questions.length;
 
 try {
     const response = await dnsclient.query("https://dns.dremaxx.de/dns-query", message);
@@ -108,7 +108,7 @@ The answer to a query can look like this, for example:
         authorities: [],
         additionals: []
     },
-    latency: 388
+    latency: 38
 }
 ```
 ### DNS update
