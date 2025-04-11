@@ -90,19 +90,19 @@ The answer to a query can look like this, for example:
         questions: [ Question { name: 'dremaxx.de', type: 6, clazz: 1 } ],
         answers: [
             Record {
-            name: 'dremaxx.de',
-            type: 6,
-            clazz: 1,
-            ttl: 3600,
-            data: [
-                { key: 'mname', value: 'theo.dremaxx.de' },
-                { key: 'rname', value: 'hostmaster.dremaxx.de' },
-                { key: 'serial', value: 2025031079 },
-                { key: 'refresh', value: 3600 },
-                { key: 'retry', value: 900 },
-                { key: 'expire', value: 2419200 },
-                { key: 'minimum', value: 60 }
-            ]
+                name: 'dremaxx.de',
+                type: 6,
+                clazz: 1,
+                ttl: 3600,
+                data: [
+                    { key: 'mname', value: 'theo.dremaxx.de' },
+                    { key: 'rname', value: 'hostmaster.dremaxx.de' },
+                    { key: 'serial', value: 2025031079 },
+                    { key: 'refresh', value: 3600 },
+                    { key: 'retry', value: 900 },
+                    { key: 'expire', value: 2419200 },
+                    { key: 'minimum', value: 60 }
+                ]
             }
         ],
         authorities: [],
