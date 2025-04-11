@@ -64,14 +64,14 @@ or load it from CDN:
 ```javascript
 import * as dnsclient from './dnsclient.min.js';
 
-let message  = new dnsclient.QueryMessage();
-let question = new dnsclient.Question("google.com", dnsclient.TYPE.A, dnsclient.CLAZZ.IN);
+const message  = new dnsclient.QueryMessage();
+const question = new dnsclient.Question("google.com", dnsclient.TYPE.A, dnsclient.CLAZZ.IN);
 message.questions.push(question);
 message.qdcount  = message.questions.length;
 
 try {
-    response = await dnsclient.query("https://dns.dremaxx.de/dns-query", message);
-    console.dir(result, {depth: null});
+    const response = await dnsclient.query("https://dns.dremaxx.de/dns-query", message);
+    console.dir(response, {depth: null});
 } catch (error) {
     console.log(error.message);
 }
@@ -80,16 +80,16 @@ try {
 The answer to a query can look like this, for example:
 ```json
 {
-    result: QueryMessage {
+    result: {
         id: 7353,
         flags: { qr: 1, opcode: 0, aa: 1, tc: 0, rd: 1, ra: 1, rcode: 0 },
         qdcount: 1,
         ancount: 1,
         nscount: 0,
         arcount: 0,
-        questions: [ Question { name: 'dremaxx.de', type: 6, clazz: 1 } ],
+        questions: [ { name: 'dremaxx.de', type: 6, clazz: 1 } ],
         answers: [
-            Record {
+            {
                 name: 'dremaxx.de',
                 type: 6,
                 clazz: 1,
@@ -115,7 +115,7 @@ The answer to a query can look like this, for example:
 ```javascript
 import * as dnsclient from './dnsclient.min.js';
 
-let message = new dnsclient.UpdateMessage();
+const message = new dnsclient.UpdateMessage();
 const zone = new dnsclient.Zone("dremaxx.de");
 const preq = new dnsclient.Record("test.dremaxx.de", dnsclient.TYPE.A, dnsclient.CLAZZ.ANY, 0);
 const update_del = new dnsclient.Record("test.dremaxx.de", dnsclient.TYPE.A, dnsclient.CLAZZ.ANY, 0);
@@ -131,8 +131,8 @@ message.prcount = message.prerequisites.length;
 message.upcount = message.updates.length;
 
 try {
-    response = await dnsclient.query("https://dns.dremaxx.de/dns-query", message);
-    console.dir(result, {depth: null});
+    const response = await dnsclient.query("https://dns.dremaxx.de/dns-query", message);
+    console.dir(response, {depth: null});
 } catch (error) {
     console.log(error.message);
 }
