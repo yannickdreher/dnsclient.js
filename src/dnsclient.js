@@ -406,22 +406,22 @@ export class DnsSerializer {
         deserialize(buffer) {
             const qr = (buffer >> 15) & 1;
             const opcode = (buffer >> 11) & 0xF;
-            const aa = (buffer >> 10) & 1;
-            const tc = (buffer >> 9) & 1;
-            const rd = (buffer >> 8) & 1;
-            const ra = (buffer >> 7) & 1;
+            const aa = !!((buffer >> 10) & 1);
+            const tc = !!((buffer >> 9) & 1);
+            const rd = !!((buffer >> 8) & 1);
+            const ra = !!((buffer >> 7) & 1);
             const rcode = buffer & 0xF; 
             return {qr, opcode, aa, tc, rd, ra, rcode};
         },
         serialize(view, offset, flags) {
             const buffer =
-                (flags.qr & 1) << 15 |
-                (flags.opcode & 0xF) << 11 |
-                (flags.aa & 1) << 10 |
-                (flags.tc & 1) << 9 |
-                (flags.rd & 1) << 8 |
-                (flags.ra & 1) << 7 |
-                (flags.rcode & 0xF);
+                ((flags.qr & 1) << 15) |
+                ((flags.opcode & 0xF) << 11) |
+                ((flags.aa & 1) << 10) |
+                ((flags.tc & 1) << 9) |
+                ((flags.rd & 1) << 8) |
+                ((flags.ra & 1) << 7) |
+                ((flags.rcode & 0xF));
             view.setUint16(offset, buffer, false);
             return offset + 2;
         }
