@@ -1174,44 +1174,44 @@ export function interpret(message) {
     switch (message.flags.opcode) {
         case OPCODE.QUERY:
             message.questions.forEach(record => {
-                record.clazz = DNS.CLASS_NAMES[record.clazz] || record.clazz;
-                record.type  = DNS.TYPE_NAMES[record.type] || record.type;
+                record.clazz = CLASS_NAMES[record.clazz] || record.clazz;
+                record.type  = TYPE_NAMES[record.type] || record.type;
             });
             message.answers.forEach(record => {
-                record.clazz = DNS.CLASS_NAMES[record.clazz] || record.clazz;
-                record.type  = DNS.TYPE_NAMES[record.type] || record.type;
+                record.clazz = CLASS_NAMES[record.clazz] || record.clazz;
+                record.type  = TYPE_NAMES[record.type] || record.type;
             });
             message.authorities.forEach(record => {
-                record.clazz = DNS.CLASS_NAMES[record.clazz] || record.clazz;
-                record.type  = DNS.TYPE_NAMES[record.type] || record.type;
+                record.clazz = CLASS_NAMES[record.clazz] || record.clazz;
+                record.type  = TYPE_NAMES[record.type] || record.type;
             });
             message.additionals.forEach(record => {
-                record.clazz = DNS.CLASS_NAMES[record.clazz] || record.clazz;
-                record.type  = DNS.TYPE_NAMES[record.type] || record.type;
+                record.clazz = CLASS_NAMES[record.clazz] || record.clazz;
+                record.type  = TYPE_NAMES[record.type] || record.type;
             });
             break;
         case OPCODE.UPDATE:
             message.zones.forEach(record => {
-                record.clazz = DNS.CLASS_NAMES[record.clazz] || record.clazz;
-                record.type  = DNS.TYPE_NAMES[record.type] || record.type;
+                record.clazz = CLASS_NAMES[record.clazz] || record.clazz;
+                record.type  = TYPE_NAMES[record.type] || record.type;
             });
             message.prerequisites.forEach(record => {
-                record.clazz = DNS.CLASS_NAMES[record.clazz] || record.clazz;
-                record.type  = DNS.TYPE_NAMES[record.type] || record.type;
+                record.clazz = CLASS_NAMES[record.clazz] || record.clazz;
+                record.type  = TYPE_NAMES[record.type] || record.type;
             });
             message.updates.forEach(record => {
-                record.clazz = DNS.CLASS_NAMES[record.clazz] || record.clazz;
-                record.type  = DNS.TYPE_NAMES[record.type] || record.type;
+                record.clazz = CLASS_NAMES[record.clazz] || record.clazz;
+                record.type  = TYPE_NAMES[record.type] || record.type;
             });
             message.additionals.forEach(record => {
-                record.clazz = DNS.CLASS_NAMES[record.clazz] || record.clazz;
-                record.type  = DNS.TYPE_NAMES[record.type] || record.type;
+                record.clazz = CLASS_NAMES[record.clazz] || record.clazz;
+                record.type  = TYPE_NAMES[record.type] || record.type;
             });
             break;
     }
-    message.flags.qr = DNS.QR_NAMES[message.flags.qr];
-    message.flags.opcode = DNS.OPCODE_NAMES[message.flags.opcode];
-    message.flags.rcode  = DNS.RCODE_NAMES[message.flags.rcode];
+    message.flags.qr = QR_NAMES[message.flags.qr];
+    message.flags.opcode = OPCODE_NAMES[message.flags.opcode];
+    message.flags.rcode  = RCODE_NAMES[message.flags.rcode];
     return message;
 }
 
