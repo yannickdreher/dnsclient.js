@@ -3,7 +3,7 @@ import * as dnsclient from '../src/dnsclient.js';
 describe('Message should be serialized correctly', () => {
     const message    = new dnsclient.QueryMessage();
     message.id       = 1234;
-    message.flags.rd = 1; // Recursion
+    message.flags.rd = true; // Recursion
 
     const question = new dnsclient.Question("example.com", dnsclient.TYPE.A, dnsclient.CLAZZ.IN);
     const record   = new dnsclient.Record("example.com", dnsclient.TYPE.A, dnsclient.CLAZZ.IN, 8600, [{key: "ipv4", value: "192.0.2.1"}]);
@@ -12,11 +12,6 @@ describe('Message should be serialized correctly', () => {
     message.answers.push(record);
     message.authorities.push(record);
     message.additionals.push(record);
-
-    message.qdcount = message.questions.length;
-    message.ancount = message.answers.length;
-    message.nscount = message.authorities.length;
-    message.arcount = message.additionals.length;
 
     const serialized = new Uint8Array([
         0x04, 0xD2, 0x01, 0x00,  // Header
