@@ -87,10 +87,10 @@ The answer to a query can look like this, for example:
         "flags": {
             "qr": 1,
             "opcode": 0,
-            "aa": 1,
-            "tc": 0,
-            "rd": 1,
-            "ra": 1,
+            "aa": true,
+            "tc": false,
+            "rd": true,
+            "ra": true,
             "rcode": 0
         },
         "qdcount": 1,
@@ -132,10 +132,10 @@ An interpreted answer can look like this, for example:
         "flags": {
             "qr": "RESPONSE",
             "opcode": "QUERY",
-            "aa": 1,
-            "tc": 0,
-            "rd": 1,
-            "ra": 1,
+            "aa": true,
+            "tc": false,
+            "rd": true,
+            "ra": true,
             "rcode": "NOERROR"
         },
         "qdcount": 1,
