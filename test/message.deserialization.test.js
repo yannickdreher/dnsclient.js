@@ -13,11 +13,6 @@ describe('Message should be serialized correctly', () => {
     message.authorities.push(record);
     message.additionals.push(record);
 
-    message.qdcount = message.questions.length;
-    message.ancount = message.answers.length;
-    message.nscount = message.authorities.length;
-    message.arcount = message.additionals.length;
-
     const serialized = new Uint8Array([
         0x04, 0xD2, 0x01, 0x00,  // Header
         0x00, 0x01, 0x00, 0x01,  // Fragen / Antworten

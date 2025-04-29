@@ -67,7 +67,6 @@ import * as dnsclient from './dnsclient.min.js';
 const message  = new dnsclient.QueryMessage();
 const question = new dnsclient.Question("dremaxx.de", dnsclient.TYPE.A, dnsclient.CLAZZ.IN);
 message.questions.push(question);
-message.qdcount = message.questions.length;
 
 try {
     const response = await dnsclient.query("https://dns.dremaxx.de/dns-query", message);
@@ -125,10 +124,6 @@ message.zones.push(zone);
 message.prerequisites.push(preq);
 message.updates.push(update_del);
 message.updates.push(update_new);
-
-message.zcount  = message.zones.length;
-message.prcount = message.prerequisites.length;
-message.upcount = message.updates.length;
 
 try {
     const response = await dnsclient.query("https://dns.dremaxx.de/dns-query", message);

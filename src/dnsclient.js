@@ -202,10 +202,10 @@ class Message {
 }
 
 export class QueryMessage extends Message {
-    qdcount = 0;
-    ancount = 0;
-    nscount = 0;
-    arcount = 0;
+    get qdcount() { this.questions.length };
+    get ancount() { this.answers.length };
+    get nscount() { this.authorities.length };
+    get arcount() { this.additionals.length };
     questions = [];
     answers = [];
     authorities = [];
@@ -218,10 +218,10 @@ export class QueryMessage extends Message {
 }
 
 export class UpdateMessage extends Message {
-    zcount = 0;
-    prcount = 0;
-    upcount = 0;
-    adcount = 0;
+    get zcount() { this.zones.length };
+    get prcount() { this.prerequisites.length };
+    get upcount() { this.updates.length };
+    get adcount() { this.additionals.length };
     zones = [];
     prerequisites = [];
     updates = [];
@@ -271,27 +271,27 @@ export class DnsSerializer {
                 message = new QueryMessage();
                 message.id = id;
                 message.flags = flags;
-                message.qdcount = view.getUint16(4);
-                message.ancount = view.getUint16(6);
-                message.nscount = view.getUint16(8);
-                message.arcount = view.getUint16(10);
+                const qdcount = view.getUint16(4);
+                const ancount = view.getUint16(6);
+                const nscount = view.getUint16(8);
+                const arcount = view.getUint16(10);
                 offset += 8;
-                for (let i = 0; i < message.qdcount; i++) {
+                for (let i = 0; i < qdcount; i++) {
                     const record = DnsRecordSerializer.deserialize(view, offset, true, false);
                     offset = record.offset;
                     message.questions.push(record.record);
                 }
-                for (let i = 0; i < message.ancount; i++) {
+                for (let i = 0; i < ancount; i++) {
                     const record = DnsRecordSerializer.deserialize(view, offset);
                     offset = record.offset;
                     message.answers.push(record.record);
                 }
-                for (let i = 0; i < message.nscount; i++) {
+                for (let i = 0; i < nscount; i++) {
                     const record = DnsRecordSerializer.deserialize(view, offset);
                     offset = record.offset;
                     message.authorities.push(record.record);
                 }
-                for (let i = 0; i < message.arcount; i++) {
+                for (let i = 0; i < arcount; i++) {
                     const record = DnsRecordSerializer.deserialize(view, offset);
                     offset = record.offset;
                     message.additionals.push(record.record);
@@ -301,27 +301,27 @@ export class DnsSerializer {
                 message = new UpdateMessage();
                 message.id = id;
                 message.flags = flags;
-                message.zcount = view.getUint16(4);
-                message.prcount = view.getUint16(6);
-                message.upcount = view.getUint16(8);
-                message.adcount = view.getUint16(10);
+                const zcount = view.getUint16(4);
+                const prcount = view.getUint16(6);
+                const upcount = view.getUint16(8);
+                const adcount = view.getUint16(10);
                 offset += 8;
-                for (let i = 0; i < message.zcount; i++) {
+                for (let i = 0; i < zcount; i++) {
                     const record = DnsRecordSerializer.deserialize(view, offset, false, true);
                     offset = record.offset;
                     message.zones.push(record.record);
                 }
-                for (let i = 0; i < message.prcount; i++) {
+                for (let i = 0; i < prcount; i++) {
                     const record = DnsRecordSerializer.deserialize(view, offset);
                     offset = record.offset;
                     message.prerequisites.push(record.record);
                 }
-                for (let i = 0; i < message.upcount; i++) {
+                for (let i = 0; i < upcount; i++) {
                     const record = DnsRecordSerializer.deserialize(view, offset);
                     offset = record.offset;
                     message.updates.push(record.record);
                 }
-                for (let i = 0; i < message.adcount; i++) {
+                for (let i = 0; i < adcount; i++) {
                     const record = DnsRecordSerializer.deserialize(view, offset);
                     offset = record.offset;
                     message.additionals.push(record.record);
