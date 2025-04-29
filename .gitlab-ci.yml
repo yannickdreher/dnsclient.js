@@ -51,6 +51,7 @@ publish:
     - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
       when: always
   script:
+    - echo "//registry.npmjs.org/:_authToken=${NPMJS_TOKEN}" > ~/.npmrc
     - echo "Installing terser..."
     - npm install terser -g
 
@@ -69,7 +70,6 @@ publish:
         done
 
     - echo "Publishing..."
-    - echo "//registry.npmjs.org/:_authToken=${NPMJS_TOKEN}" > ~/.npmrc
     - VERSION=${CI_COMMIT_TAG#v}
     - npm version "$VERSION" --no-git-tag-version
     - npm publish
