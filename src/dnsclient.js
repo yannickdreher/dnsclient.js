@@ -201,10 +201,10 @@ class Message {
 }
 
 export class QueryMessage extends Message {
-    get qdcount() { this.questions.length };
-    get ancount() { this.answers.length };
-    get nscount() { this.authorities.length };
-    get arcount() { this.additionals.length };
+    get qdcount() { return this.questions.length };
+    get ancount() { return this.answers.length };
+    get nscount() { return this.authorities.length };
+    get arcount() { return this.additionals.length };
     questions = [];
     answers = [];
     authorities = [];
@@ -217,10 +217,10 @@ export class QueryMessage extends Message {
 }
 
 export class UpdateMessage extends Message {
-    get zcount() { this.zones.length };
-    get prcount() { this.prerequisites.length };
-    get upcount() { this.updates.length };
-    get adcount() { this.additionals.length };
+    get zcount() { return this.zones.length };
+    get prcount() { return this.prerequisites.length };
+    get upcount() { return this.updates.length };
+    get adcount() { return this.additionals.length };
     zones = [];
     prerequisites = [];
     updates = [];
