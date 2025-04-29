@@ -211,7 +211,7 @@ export class QueryMessage extends Message {
     additionals = [];
     constructor() {
         super();
-        this.flags.rd = 1;
+        this.flags.rd = true;
         this.flags.opcode = OPCODE.QUERY;
     }
 }
