@@ -75,39 +75,98 @@ try {
     console.log(error.message);
 }
 ```
-
+Optionally, you can also have the answer interpreted:
+```javascript
+const response = await dnsclient.query("https://dns.dremaxx.de/dns-query", message, true);
+```
 The answer to a query can look like this, for example:
 ```json
 {
-    result: {
-        id: 7353,
-        flags: { qr: 1, opcode: 0, aa: 1, tc: 0, rd: 1, ra: 1, rcode: 0 },
-        qdcount: 1,
-        ancount: 1,
-        nscount: 0,
-        arcount: 0,
-        questions: [ { name: 'dremaxx.de', type: 6, clazz: 1 } ],
-        answers: [
+    "result": {
+        "id": 46279,
+        "flags": {
+            "qr": 1,
+            "opcode": 0,
+            "aa": 1,
+            "tc": 0,
+            "rd": 1,
+            "ra": 1,
+            "rcode": 0
+        },
+        "qdcount": 1,
+        "ancount": 1,
+        "nscount": 0,
+        "arcount": 0,
+        "questions": [
             {
-                name: 'dremaxx.de',
-                type: 6,
-                clazz: 1,
-                ttl: 3600,
-                data: [
-                    { key: 'mname', value: 'theo.dremaxx.de' },
-                    { key: 'rname', value: 'hostmaster.dremaxx.de' },
-                    { key: 'serial', value: 2025031079 },
-                    { key: 'refresh', value: 3600 },
-                    { key: 'retry', value: 900 },
-                    { key: 'expire', value: 2419200 },
-                    { key: 'minimum', value: 60 }
+                "name": "dremaxx.de",
+                "type": 1,
+                "clazz": 1
+            }
+        ],
+        "answers": [
+            {
+                "name": "dremaxx.de",
+                "type": 1,
+                "clazz": 1,
+                "ttl": 3600,
+                "data": [
+                    {
+                        "key": "ipv4",
+                        "value": "5.75.173.96"
+                    }
                 ]
             }
         ],
-        authorities: [],
-        additionals: []
+        "authorities": [],
+        "additionals": []
     },
-    latency: 38
+    "latency": 49
+}
+```
+An interpreted answer can look like this, for example:
+```json
+{
+    "result": {
+        "id": 20538,
+        "flags": {
+            "qr": "RESPONSE",
+            "opcode": "QUERY",
+            "aa": 1,
+            "tc": 0,
+            "rd": 1,
+            "ra": 1,
+            "rcode": "NOERROR"
+        },
+        "qdcount": 1,
+        "ancount": 1,
+        "nscount": 0,
+        "arcount": 0,
+        "questions": [
+            {
+                "name": "dremaxx.de",
+                "type": "A",
+                "clazz": "IN"
+            }
+        ],
+        "answers": [
+            {
+                "name": "dremaxx.de",
+                "type": "A",
+                "clazz": "IN",
+                "ttl": 3600,
+                "data": [
+                    {
+                        "key": "ipv4",
+                        "value": "5.75.173.96"
+                    }
+                ]
+            }
+        ],
+        "authorities": [],
+        "additionals": []
+    },
+    "latency": 31
 }
 ```
 ### DNS update
