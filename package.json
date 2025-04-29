@@ -4,6 +4,11 @@
   "description": "JavaScript library for performing DNS queries over HTTPS",
   "main": "dnsclient.min.js",
   "type": "module",
+  "files": [
+    "test",
+    "dnsclient.min.js",
+    "README.md"
+  ],
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
