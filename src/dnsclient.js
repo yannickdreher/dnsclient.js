@@ -193,10 +193,10 @@ class Message {
     flags = {
         qr: 0,
         opcode: 0,
-        aa: 0,
-        tc: 0,
-        rd: 0,
-        ra: 0,
+        aa: false,
+        tc: false,
+        rd: false,
+        ra: false,
         rcode: 0
     };
 }
