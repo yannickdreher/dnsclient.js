@@ -24,11 +24,11 @@ publish:
     - npm install terser -g
 
     - echo "Minifying..."
-    - terser src/dnsclient.js -c -m -o dnsclient.min.js
+    - terser dnsclient.js -c -m -o dnsclient.min.js
 
     - echo "Update headers..."
     - |
-        FILES=("dnsclient.min.js")
+        FILES=("dnsclient.js", "dnsclient.min.js")
         MODIFIED_DATE=$(date +"%A, %dth %B %Y %I:%M:%S %P")
 
         for FILE in "${FILES[@]}"; do
