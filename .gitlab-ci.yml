@@ -28,7 +28,7 @@ publish:
 
     - echo "Update headers..."
     - |
-        FILES=("dnsclient.js", "dnsclient.min.js")
+        FILES=("dnsclient.js" "dnsclient.min.js")
         MODIFIED_DATE=$(date +"%A, %dth %B %Y %I:%M:%S %P")
 
         for FILE in "${FILES[@]}"; do
