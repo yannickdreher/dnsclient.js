@@ -1,4 +1,4 @@
-import * as dnsclient from '../src/dnsclient.js';
+import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "SRV" should be serialized correctly', () => {
     const rdata = [

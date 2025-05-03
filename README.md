@@ -62,7 +62,7 @@ or load it from CDN:
 ## Usage
 ### DNS query
 ```javascript
-import * as dnsclient from './dnsclient.min.js';
+import * as dnsclient from 'dnsclient.js';
 
 const message  = new dnsclient.QueryMessage();
 const question = new dnsclient.Question("dremaxx.de", dnsclient.TYPE.A, dnsclient.CLAZZ.IN);
@@ -171,7 +171,7 @@ An interpreted answer can look like this, for example:
 ```
 ### DNS update
 ```javascript
-import * as dnsclient from './dnsclient.min.js';
+import * as dnsclient from 'dnsclient.js';
 
 const message = new dnsclient.UpdateMessage();
 const zone = new dnsclient.Zone("dremaxx.de");

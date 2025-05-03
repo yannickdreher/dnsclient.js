@@ -1,4 +1,4 @@
-import * as dnsclient from '../src/dnsclient.js';
+import * as dnsclient from '../dnsclient.js';
 
 describe('Reecord type "NSEC" should deserialize the data correctly', () => {
     const data = new Uint8Array([

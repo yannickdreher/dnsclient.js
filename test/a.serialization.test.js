@@ -1,4 +1,4 @@
-import * as dnsclient from '../src/dnsclient.js';
+import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "A" should be serialized correctly', () => {
     const rdata  = [{key: "ipv4", value: "192.0.2.1"}];
