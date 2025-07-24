@@ -1,4 +1,4 @@
-import * as dnsclient from '../src/dnsclient.js';
+import * as dnsclient from '../dnsclient.js';
 
 describe('Message should be serialized correctly', () => {
     const message    = new dnsclient.QueryMessage();

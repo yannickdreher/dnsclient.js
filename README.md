@@ -10,42 +10,91 @@ It supports various DNS record types and handles DNS response parsing, including
 ## Features
 
 - Perform DNS queries over HTTPS
-- Support for multiple DNS record types
+- Support for multiple DNS record types (27+ types supported)
 - Handles DNS response parsing and name compression
 - Supports both serialization and deserialization
 - Supports both DNS queries and DNS updates
-    - TSIG authentication is currently not yet supported or does not yet work
+- Full DNSSEC support (DS, DNSKEY, RRSIG, NSEC records)
+- Modern security records (CAA, TLSA, SSHFP)
+- Service discovery records (SRV, NAPTR)
+- Legacy and obsolete record support for compatibility
 
-Available types:
-| Type    | Code |
-|---------|------|
-| A       | 1    |
-| NS      | 2    |
-| CNAME   | 5    |
-| SOA     | 6    |
-| HINFO   | 13   |
-| MX      | 15   |
-| TXT     | 16   |
-| AAAA    | 28   |
-| SRV     | 33   |
-| DS      | 43   |
-| RRSIG   | 46   |
-| NSEC    | 47   |
-| DNSKEY  | 48   |
-| CDS     | 59   |
-| CDNSKEY | 60   |
-| TSIG    | 250  |
-| ANY     | 255  |
+## Supported DNS Record Types
 
-Available classes:
-| Calss   | Code |
-|---------|------|
-| IN      | 1    |
-| CS      | 2    |
-| CH      | 3    |
-| HS      | 4    |
-| NONE    | 254  |
-| ANY     | 255  |
+### Core Internet Records
+| Type     | Code | Description                              | RFC     |
+|----------|------|------------------------------------------|---------|
+| A        | 1    | IPv4 Address                            | RFC 1035|
+| NS       | 2    | Name Server                             | RFC 1035|
+| CNAME    | 5    | Canonical Name                          | RFC 1035|
+| SOA      | 6    | Start of Authority                      | RFC 1035|
+| PTR      | 12   | Pointer (Reverse DNS)                   | RFC 1035|
+| HINFO    | 13   | Host Information                        | RFC 1035|
+| MX       | 15   | Mail Exchange                           | RFC 1035|
+| TXT      | 16   | Text Record                             | RFC 1035|
+| AAAA     | 28   | IPv6 Address                            | RFC 3596|
+
+### Mail System Records (Legacy)
+| Type     | Code | Description                              | RFC     |
+|----------|------|------------------------------------------|---------|
+| MD       | 3    | Mail Domain (obsolete)                  | RFC 1035|
+| MF       | 4    | Mail Forwarder (obsolete)               | RFC 1035|
+| MB       | 7    | Mailbox Domain Name                     | RFC 1035|
+| MG       | 8    | Mail Group Member                       | RFC 1035|
+| MR       | 9    | Mail Rename Domain Name                 | RFC 1035|
+| MINFO    | 14   | Mailbox Information                     | RFC 1035|
+
+### Service and Network Records
+| Type     | Code | Description                              | RFC     |
+|----------|------|------------------------------------------|---------|
+| WKS      | 11   | Well Known Service                      | RFC 1035|
+| SRV      | 33   | Service Location                        | RFC 2782|
+| NAPTR    | 35   | Name Authority Pointer                  | RFC 3403|
+| AFSDB    | 18   | AFS Database Location                   | RFC 1183|
+
+### DNSSEC Records
+| Type     | Code | Description                              | RFC     |
+|----------|------|------------------------------------------|---------|
+| DS       | 43   | Delegation Signer                       | RFC 4034|
+| RRSIG    | 46   | Resource Record Signature               | RFC 4034|
+| NSEC     | 47   | Next Secure                             | RFC 4034|
+| DNSKEY   | 48   | DNS Key                                 | RFC 4034|
+| CDS      | 59   | Child DS                                | RFC 7344|
+| CDNSKEY  | 60   | Child DNS Key                           | RFC 7344|
+
+### Security and Authentication Records
+| Type     | Code | Description                              | RFC     |
+|----------|------|------------------------------------------|---------|
+| CERT     | 37   | Certificate                             | RFC 4398|
+| SSHFP    | 44   | SSH Fingerprint                         | RFC 4255|
+| TLSA     | 52   | Transport Layer Security Authentication | RFC 6698|
+| CAA      | 257  | Certificate Authority Authorization     | RFC 6844|
+
+### Modern and Specialized Records
+| Type     | Code | Description                              | RFC     |
+|----------|------|------------------------------------------|---------|
+| RP       | 17   | Responsible Person                      | RFC 1183|
+| LOC      | 29   | Location Information                    | RFC 1876|
+| DNAME    | 39   | Delegation Name                         | RFC 6672|
+| SPF      | 99   | Sender Policy Framework                 | RFC 7208|
+| URI      | 256  | Uniform Resource Identifier             | RFC 7553|
+
+### Special Purpose Records
+| Type     | Code | Description                              | RFC     |
+|----------|------|------------------------------------------|---------|
+| NULL     | 10   | Null Record (arbitrary data)           | RFC 1035|
+| TSIG     | 250  | Transaction Signature                   | RFC 2845|
+| ANY      | 255  | Query for any record type               | RFC 1035|
+
+### Supported DNS Classes
+| Class   | Code | Description                              |
+|---------|------|------------------------------------------|
+| IN      | 1    | Internet                                |
+| CS      | 2    | CSNET (obsolete)                        |
+| CH      | 3    | CHAOS                                   |
+| HS      | 4    | Hesiod                                  |
+| NONE    | 254  | QCLASS NONE                             |
+| ANY     | 255  | QCLASS ANY                              |
 
 ## Installation
 
@@ -56,13 +105,17 @@ npm install dnsclient.js
 ```
 or load it from CDN:
 ```html
-<script type="module"> import dnsclient from https://cdn.jsdelivr.net/npm/dnsclient.js/+esm </script>
+<script src="https://cdn.jsdelivr.net/npm/dnsclient.js/dnsclient.min.js"></script>
+```
+or
+```html
+<script type="module"> import dnsclient.js from https://cdn.jsdelivr.net/npm/dnsclient.js/+esm </script>
 ```
 
 ## Usage
 ### DNS query
 ```javascript
-import * as dnsclient from './dnsclient.min.js';
+import * as dnsclient from 'dnsclient.js';
 
 const message  = new dnsclient.QueryMessage();
 const question = new dnsclient.Question("dremaxx.de", dnsclient.TYPE.A, dnsclient.CLAZZ.IN);
@@ -171,7 +224,7 @@ An interpreted answer can look like this, for example:
 ```
 ### DNS update
 ```javascript
-import * as dnsclient from './dnsclient.min.js';
+import * as dnsclient from 'dnsclient.js';
 
 const message = new dnsclient.UpdateMessage();
 const zone = new dnsclient.Zone("dremaxx.de");

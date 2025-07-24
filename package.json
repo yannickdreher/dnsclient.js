@@ -2,15 +2,16 @@
   "name": "dnsclient.js",
   "version": "1.0.0",
   "description": "JavaScript library for performing DNS queries over HTTPS",
-  "main": "dnsclient.min.js",
+  "main": "dnsclient.js",
   "type": "module",
   "files": [
     "test",
+    "dnsclient.js",
     "dnsclient.min.js",
     "README.md"
   ],
   "scripts": {
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "test": "node --no-warnings --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "repository": {
     "type": "git",

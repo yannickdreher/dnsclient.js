@@ -150,20 +150,40 @@ export const CLASS_NAMES = Object.freeze({
 export const TYPE = Object.freeze({
     A: 1,
     NS: 2,
+    MD: 3,
+    MF: 4,
     CNAME: 5,
     SOA: 6,
+    MB: 7,
+    MG: 8,
+    MR: 9,
+    NULL: 10,
+    WKS: 11,
+    PTR: 12,
     HINFO: 13,
+    MINFO: 14,
     MX: 15,
     TXT: 16,
+    RP: 17,
+    AFSDB: 18,
+    LOC: 29,
     AAAA: 28,
     SRV: 33,
+    NAPTR: 35,
+    CERT: 37,
+    DNAME: 39,
     DS: 43,
+    SSHFP: 44,
     RRSIG: 46,
     NSEC: 47,
     DNSKEY: 48,
+    TLSA: 52,
     CDS: 59,
     CDNSKEY: 60,
+    SPF: 99,
     TSIG: 250,
+    URI: 256,
+    CAA: 257,
     ANY: 255
 });
 
@@ -201,26 +221,26 @@ class Message {
 }
 
 export class QueryMessage extends Message {
-    get qdcount() { this.questions.length };
-    get ancount() { this.answers.length };
-    get nscount() { this.authorities.length };
-    get arcount() { this.additionals.length };
+    get qdcount() { return this.questions.length };
+    get ancount() { return this.answers.length };
+    get nscount() { return this.authorities.length };
+    get arcount() { return this.additionals.length };
     questions = [];
     answers = [];
     authorities = [];
     additionals = [];
     constructor() {
         super();
-        this.flags.rd = 1;
+        this.flags.rd = true;
         this.flags.opcode = OPCODE.QUERY;
     }
 }
 
 export class UpdateMessage extends Message {
-    get zcount() { this.zones.length };
-    get prcount() { this.prerequisites.length };
-    get upcount() { this.updates.length };
-    get adcount() { this.additionals.length };
+    get zcount() { return this.zones.length };
+    get prcount() { return this.prerequisites.length };
+    get upcount() { return this.updates.length };
+    get adcount() { return this.additionals.length };
     zones = [];
     prerequisites = [];
     updates = [];
@@ -452,11 +472,20 @@ export class DnsNameSerializer {
         if (!jumped) {
             jumpOffset = offset + 1;
         }
-        return { name: labels.join("."), offset: jumpOffset, length: jumpOffset - initialOffset };
+        const name = labels.length === 0 ? "." : labels.join(".");
+        return { name, offset: jumpOffset, length: jumpOffset - initialOffset };
     }
 
     static serialize(name) {
+        if (name === "." || name === "") {
+            return new Uint8Array([0]);
+        }
+        
         const labels = name.split(".");
+        if (labels[labels.length - 1] === "") {
+            labels.pop();
+        }
+        
         const length = labels.reduce((sum, label) => sum + label.length + 1, 0) + 1;
         const buffer = new Uint8Array(length);
         let offset = 0;
@@ -508,34 +537,74 @@ export class DnsRecordSerializer {
                 record.data = this.A.deserialize(view, offset, dataLength); break;
             case TYPE.NS:
                 record.data = this.NS.deserialize(view, offset); break;
+            case TYPE.MD:
+                record.data = this.MD.deserialize(view, offset); break;
+            case TYPE.MF:
+                record.data = this.MF.deserialize(view, offset); break;
             case TYPE.CNAME:
                 record.data = this.CNAME.deserialize(view, offset); break;
             case TYPE.SOA:
                 record.data = this.SOA.deserialize(view, offset); break;
+            case TYPE.MB:
+                record.data = this.MB.deserialize(view, offset); break;
+            case TYPE.MG:
+                record.data = this.MG.deserialize(view, offset); break;
+            case TYPE.MR:
+                record.data = this.MR.deserialize(view, offset); break;
+            case TYPE.NULL:
+                record.data = this.NULL.deserialize(view, offset, dataLength); break;
+            case TYPE.WKS:
+                record.data = this.WKS.deserialize(view, offset, dataLength); break;
+            case TYPE.PTR:
+                record.data = this.PTR.deserialize(view, offset); break;
             case TYPE.HINFO:
                 record.data = this.HINFO.deserialize(view, offset); break;
+            case TYPE.MINFO:
+                record.data = this.MINFO.deserialize(view, offset); break;
             case TYPE.MX:
                 record.data = this.MX.deserialize(view, offset); break;
+            case TYPE.TXT:
+                record.data = this.TXT.deserialize(view, offset); break;
+            case TYPE.RP:
+                record.data = this.RP.deserialize(view, offset); break;
+            case TYPE.AFSDB:
+                record.data = this.AFSDB.deserialize(view, offset); break;
+            case TYPE.LOC:
+                record.data = this.LOC.deserialize(view, offset, dataLength); break;
             case TYPE.AAAA:
                 record.data = this.AAAA.deserialize(view, offset, dataLength); break;
             case TYPE.SRV:
                 record.data = this.SRV.deserialize(view, offset); break;
+            case TYPE.NAPTR:
+                record.data = this.NAPTR.deserialize(view, offset); break;
+            case TYPE.CERT:
+                record.data = this.CERT.deserialize(view, offset, dataLength); break;
+            case TYPE.DNAME:
+                record.data = this.DNAME.deserialize(view, offset); break;
             case TYPE.DS:
                 record.data = this.DS.deserialize(view, offset, dataLength); break;
-            case TYPE.TXT:
-                record.data = this.TXT.deserialize(view, offset); break;
+            case TYPE.SSHFP:
+                record.data = this.SSHFP.deserialize(view, offset, dataLength); break;
             case TYPE.RRSIG:
                 record.data = this.RRSIG.deserialize(view, offset, dataLength); break;
             case TYPE.NSEC:
                 record.data = this.NSEC.deserialize(view, offset, dataLength); break;
             case TYPE.DNSKEY:
                 record.data = this.DNSKEY.deserialize(view, offset, dataLength); break;
+            case TYPE.TLSA:
+                record.data = this.TLSA.deserialize(view, offset, dataLength); break;
             case TYPE.CDS:
                 record.data = this.DS.deserialize(view, offset, dataLength); break;
             case TYPE.CDNSKEY:
                 record.data = this.DNSKEY.deserialize(view, offset, dataLength); break;
+            case TYPE.SPF:
+                record.data = this.SPF.deserialize(view, offset); break;
             case TYPE.TSIG:
                 record.data = this.TSIG.deserialize(view, offset); break;
+            case TYPE.URI:
+                record.data = this.URI.deserialize(view, offset, dataLength); break;
+            case TYPE.CAA:
+                record.data = this.CAA.deserialize(view, offset, dataLength); break;
         }
         offset += dataLength;
         return {record, offset};
@@ -564,12 +633,30 @@ export class DnsRecordSerializer {
                 buffer = this.A.serialize(record.data); break;
             case TYPE.NS:
                 buffer = this.NS.serialize(record.data); break;
+            case TYPE.MD:
+                buffer = this.MD.serialize(record.data); break;
+            case TYPE.MF:
+                buffer = this.MF.serialize(record.data); break;
             case TYPE.CNAME:
                 buffer = this.CNAME.serialize(record.data); break;
             case TYPE.SOA:
                 buffer = this.SOA.serialize(record.data); break;
+            case TYPE.MB:
+                buffer = this.MB.serialize(record.data); break;
+            case TYPE.MG:
+                buffer = this.MG.serialize(record.data); break;
+            case TYPE.MR:
+                buffer = this.MR.serialize(record.data); break;
+            case TYPE.NULL:
+                buffer = this.NULL.serialize(record.data); break;
+            case TYPE.WKS:
+                buffer = this.WKS.serialize(record.data); break;
+            case TYPE.PTR:
+                buffer = this.PTR.serialize(record.data); break;
             case TYPE.HINFO:
                 buffer = this.HINFO.serialize(record.data); break;
+            case TYPE.MINFO:
+                buffer = this.MINFO.serialize(record.data); break;
             case TYPE.MX:
                 buffer = this.MX.serialize(record.data); break;
             case TYPE.AAAA:
@@ -584,12 +671,34 @@ export class DnsRecordSerializer {
                 buffer = this.RRSIG.serialize(record.data); break;
             case TYPE.DNSKEY:
                 buffer = this.DNSKEY.serialize(record.data); break;
+            case TYPE.TLSA:
+                buffer = this.TLSA.serialize(record.data); break;
             case TYPE.CDS:
                 buffer = this.DS.serialize(record.data); break;
             case TYPE.CDNSKEY:
                 buffer = this.DNSKEY.serialize(record.data); break;
             case TYPE.TSIG:
                 buffer = this.TSIG.serialize(record.data); break;
+            case TYPE.RP:
+                buffer = this.RP.serialize(record.data); break;
+            case TYPE.AFSDB:
+                buffer = this.AFSDB.serialize(record.data); break;
+            case TYPE.LOC:
+                buffer = this.LOC.serialize(record.data); break;
+            case TYPE.NAPTR:
+                buffer = this.NAPTR.serialize(record.data); break;
+            case TYPE.CERT:
+                buffer = this.CERT.serialize(record.data); break;
+            case TYPE.DNAME:
+                buffer = this.DNAME.serialize(record.data); break;
+            case TYPE.SSHFP:
+                buffer = this.SSHFP.serialize(record.data); break;
+            case TYPE.SPF:
+                buffer = this.SPF.serialize(record.data); break;
+            case TYPE.URI:
+                buffer = this.URI.serialize(record.data); break;
+            case TYPE.CAA:
+                buffer = this.CAA.serialize(record.data); break;
         }
         view.setUint16(offset, buffer.byteLength, false);
         offset += 2;
@@ -627,6 +736,32 @@ export class DnsRecordSerializer {
         }
     }
 
+    static MD = {
+        deserialize(view, offset) {
+            const value = DnsNameSerializer.deserialize(view, offset);
+            const data = [{key: "name", value: value.name}];
+            return data;
+        },
+        serialize(rdata) {
+            const name = rdata.find(item => item.key === "name").value;
+            const buffer = DnsNameSerializer.serialize(name);
+            return buffer;
+        }
+    }
+
+    static MF = {
+        deserialize(view, offset) {
+            const value = DnsNameSerializer.deserialize(view, offset);
+            const data = [{key: "name", value: value.name}];
+            return data;
+        },
+        serialize(rdata) {
+            const name = rdata.find(item => item.key === "name").value;
+            const buffer = DnsNameSerializer.serialize(name);
+            return buffer;
+        }
+    }
+    
     static CNAME = {
         deserialize(view, offset) {
             const value = DnsNameSerializer.deserialize(view, offset);
@@ -680,6 +815,194 @@ export class DnsRecordSerializer {
             view.setUint32(offset +  8, rdata.find(item => item.key === "retry").value,   false);
             view.setUint32(offset + 12, rdata.find(item => item.key === "expire").value,  false);
             view.setUint32(offset + 16, rdata.find(item => item.key === "minimum").value, false);
+            return new Uint8Array(buffer);
+        }
+    }
+
+    static MB = {
+        deserialize(view, offset) {
+            const value = DnsNameSerializer.deserialize(view, offset);
+            const data = [{ key: "name", value: value.name }];
+            return data;
+        },
+        serialize(rdata) {
+            const name = rdata.find(item => item.key === "name").value;
+            const buffer = DnsNameSerializer.serialize(name);
+            return buffer;
+        }
+    }
+
+    static MG = {
+        deserialize(view, offset) {
+            const value = DnsNameSerializer.deserialize(view, offset);
+            const data = [{ key: "name", value: value.name }];
+            return data;
+        },
+        serialize(rdata) {
+            const name = rdata.find(item => item.key === "name").value;
+            const buffer = DnsNameSerializer.serialize(name);
+            return buffer;
+        }
+    }
+
+    static MR = {
+        deserialize(view, offset) {
+            const value = DnsNameSerializer.deserialize(view, offset);
+            const data = [{ key: "name", value: value.name }];
+            return data;
+        },
+        serialize(rdata) {
+            const name = rdata.find(item => item.key === "name").value;
+            const buffer = DnsNameSerializer.serialize(name);
+            return buffer;
+        }
+    }
+
+    static NULL = {
+        deserialize(view, offset, dataLength) {
+            const data = new Uint8Array(view.buffer.slice(offset, offset + dataLength));
+            return [{ key: "data", value: btoa(String.fromCharCode(...data)) }];
+        },
+        serialize(rdata) {
+            const base64Data = rdata.find(item => item.key === "data").value;
+            const buffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+            return buffer;
+        }
+    }
+
+    static WKS = {
+        deserialize(view, offset, dataLength) {
+            const address = new Uint8Array(view.buffer.slice(offset, offset + 4)).join(".");
+            const protocol = view.getUint8(offset + 4);
+            const bitmap = new Uint8Array(view.buffer.slice(offset + 5, offset + dataLength));
+            const ports = [];
+
+            for (let i = 0; i < bitmap.length; i++) {
+                for (let bit = 0; bit < 8; bit++) {
+                    if (bitmap[i] & (1 << (7 - bit))) {
+                        ports.push(i * 8 + bit);
+                    }
+                }
+            }
+
+            const data = [
+                { key: "address", value: address },
+                { key: "protocol", value: protocol },
+                { key: "ports", value: ports }
+            ];
+            return data;
+        },
+        serialize(rdata) {
+            const address = rdata.find(item => item.key === "address").value;
+            const protocol = rdata.find(item => item.key === "protocol").value;
+            const ports = rdata.find(item => item.key === "ports").value;
+
+            const addressBytes = address.split(".").map(Number);
+            const maxPort = Math.max(...ports);
+            const bitmapLength = Math.ceil((maxPort + 1) / 8);
+            const bitmap = new Uint8Array(bitmapLength);
+
+            for (const port of ports) {
+                const byteIndex = Math.floor(port / 8);
+                const bitIndex = 7 - (port % 8);
+                bitmap[byteIndex] |= (1 << bitIndex);
+            }
+
+            const buffer = new Uint8Array(5 + bitmapLength);
+            buffer.set(addressBytes, 0);
+            buffer[4] = protocol;
+            buffer.set(bitmap, 5);
+
+            return buffer;
+        }
+    }
+
+    static PTR = {
+        deserialize(view, offset) {
+            const value = DnsNameSerializer.deserialize(view, offset);
+            const data = [{ key: "name", value: value.name }];
+            return data;
+        },
+        serialize(rdata) {
+            const name = rdata.find(item => item.key === "name").value;
+            const buffer = DnsNameSerializer.serialize(name);
+            return buffer;
+        }
+    }
+
+    static MINFO = {
+        deserialize(view, offset) {
+            const rmailbx = DnsNameSerializer.deserialize(view, offset);
+            offset = rmailbx.offset;
+            const emailbx = DnsNameSerializer.deserialize(view, offset);
+            const data = [
+                { key: "rmailbx", value: rmailbx.name },
+                { key: "emailbx", value: emailbx.name }
+            ];
+            return data;
+        },
+        serialize(rdata) {
+            const rmailbx = rdata.find(item => item.key === "rmailbx").value;
+            const emailbx = rdata.find(item => item.key === "emailbx").value;
+            const rmailbxBytes = DnsNameSerializer.serialize(rmailbx);
+            const emailbxBytes = DnsNameSerializer.serialize(emailbx);
+
+            const buffer = new Uint8Array(rmailbxBytes.length + emailbxBytes.length);
+            buffer.set(rmailbxBytes, 0);
+            buffer.set(emailbxBytes, rmailbxBytes.length);
+
+            return buffer;
+        }
+    }
+
+    static RP = {
+        deserialize(view, offset) {
+            const mbox = DnsNameSerializer.deserialize(view, offset);
+            offset = mbox.offset;
+            const txt = DnsNameSerializer.deserialize(view, offset);
+            const data = [
+                { key: "mbox", value: mbox.name },
+                { key: "txt", value: txt.name }
+            ];
+            return data;
+        },
+        serialize(rdata) {
+            const mbox = rdata.find(item => item.key === "mbox").value;
+            const txt = rdata.find(item => item.key === "txt").value;
+            const mboxBytes = DnsNameSerializer.serialize(mbox);
+            const txtBytes = DnsNameSerializer.serialize(txt);
+
+            const buffer = new Uint8Array(mboxBytes.length + txtBytes.length);
+            buffer.set(mboxBytes, 0);
+            buffer.set(txtBytes, mboxBytes.length);
+
+            return buffer;
+        }
+    }
+
+    static AFSDB = {
+        deserialize(view, offset) {
+            const subtype = view.getUint16(offset);
+            const hostname = DnsNameSerializer.deserialize(view, offset + 2);
+            const data = [
+                { key: "subtype", value: subtype },
+                { key: "hostname", value: hostname.name }
+            ];
+            return data;
+        },
+        serialize(rdata) {
+            const subtype = rdata.find(item => item.key === "subtype").value;
+            const hostname = rdata.find(item => item.key === "hostname").value;
+            const hostnameBytes = DnsNameSerializer.serialize(hostname);
+
+            const length = hostnameBytes.length + 2;
+            const buffer = new ArrayBuffer(length);
+            const view = new DataView(buffer);
+            let offset = 0;
+
+            view.setUint16(offset, subtype, false);
+            offset += 2;
+            hostnameBytes.forEach((byte) => view.setUint8(offset++, byte));
             return new Uint8Array(buffer);
         }
     }
@@ -1095,6 +1418,324 @@ export class DnsRecordSerializer {
             offset += 2;
             rdata.otherData.forEach((byte) => view.setUint8(offset++, byte));
             return new Uint8Array(buffer);
+        }
+    }
+
+    static LOC = {
+        deserialize(view, offset, dataLength) {
+            if (dataLength !== 16) {
+                throw new Error("Invalid LOC record length.");
+            }
+            const version = view.getUint8(offset);
+            const size = view.getUint8(offset + 1);
+            const horizPre = view.getUint8(offset + 2);
+            const vertPre = view.getUint8(offset + 3);
+            const latitude = view.getUint32(offset + 4);
+            const longitude = view.getUint32(offset + 8);
+            const altitude = view.getUint32(offset + 12);
+            
+            const data = [
+                {key: "version", value: version},
+                {key: "size", value: size},
+                {key: "horizPre", value: horizPre},
+                {key: "vertPre", value: vertPre},
+                {key: "latitude", value: latitude},
+                {key: "longitude", value: longitude},
+                {key: "altitude", value: altitude}
+            ];
+            return data;
+        },
+        serialize(rdata) {
+            const buffer = new ArrayBuffer(16);
+            const view = new DataView(buffer);
+            let offset = 0;
+
+            view.setUint8(offset, rdata.find(item => item.key === "version").value);
+            offset++;
+            view.setUint8(offset, rdata.find(item => item.key === "size").value);
+            offset++;
+            view.setUint8(offset, rdata.find(item => item.key === "horizPre").value);
+            offset++;
+            view.setUint8(offset, rdata.find(item => item.key === "vertPre").value);
+            offset++;
+            view.setUint32(offset, rdata.find(item => item.key === "latitude").value, false);
+            offset += 4;
+            view.setUint32(offset, rdata.find(item => item.key === "longitude").value, false);
+            offset += 4;
+            view.setUint32(offset, rdata.find(item => item.key === "altitude").value, false);
+            
+            return new Uint8Array(buffer);
+        }
+    }
+
+    static NAPTR = {
+        deserialize(view, offset) {
+            const order = view.getUint16(offset);
+            const preference = view.getUint16(offset + 2);
+            offset += 4;
+            
+            const flagsLength = view.getUint8(offset);
+            const flags = new TextDecoder().decode(view.buffer.slice(offset + 1, offset + 1 + flagsLength));
+            offset += 1 + flagsLength;
+            
+            const servicesLength = view.getUint8(offset);
+            const services = new TextDecoder().decode(view.buffer.slice(offset + 1, offset + 1 + servicesLength));
+            offset += 1 + servicesLength;
+            
+            const regexpLength = view.getUint8(offset);
+            const regexp = new TextDecoder().decode(view.buffer.slice(offset + 1, offset + 1 + regexpLength));
+            offset += 1 + regexpLength;
+            
+            const replacement = DnsNameSerializer.deserialize(view, offset);
+            
+            const data = [
+                {key: "order", value: order},
+                {key: "preference", value: preference},
+                {key: "flags", value: flags},
+                {key: "services", value: services},
+                {key: "regexp", value: regexp},
+                {key: "replacement", value: replacement.name}
+            ];
+            return data;
+        },
+        serialize(rdata) {
+            const order = rdata.find(item => item.key === "order").value;
+            const preference = rdata.find(item => item.key === "preference").value;
+            const flags = rdata.find(item => item.key === "flags").value;
+            const services = rdata.find(item => item.key === "services").value;
+            const regexp = rdata.find(item => item.key === "regexp").value;
+            const replacement = rdata.find(item => item.key === "replacement").value;
+            
+            const flagsBytes = new TextEncoder().encode(flags);
+            const servicesBytes = new TextEncoder().encode(services);
+            const regexpBytes = new TextEncoder().encode(regexp);
+            const replacementBytes = DnsNameSerializer.serialize(replacement);
+            
+            const length = 4 + 1 + flagsBytes.length + 1 + servicesBytes.length + 1 + regexpBytes.length + replacementBytes.length;
+            const buffer = new ArrayBuffer(length);
+            const view = new DataView(buffer);
+            let offset = 0;
+            
+            view.setUint16(offset, order, false);
+            offset += 2;
+            view.setUint16(offset, preference, false);
+            offset += 2;
+            view.setUint8(offset, flagsBytes.length);
+            offset++;
+            flagsBytes.forEach((byte) => view.setUint8(offset++, byte));
+            view.setUint8(offset, servicesBytes.length);
+            offset++;
+            servicesBytes.forEach((byte) => view.setUint8(offset++, byte));
+            view.setUint8(offset, regexpBytes.length);
+            offset++;
+            regexpBytes.forEach((byte) => view.setUint8(offset++, byte));
+            replacementBytes.forEach((byte) => view.setUint8(offset++, byte));
+            
+            return new Uint8Array(buffer);
+        }
+    }
+
+    static CERT = {
+        deserialize(view, offset, dataLength) {
+            const type = view.getUint16(offset);
+            const keyTag = view.getUint16(offset + 2);
+            const algorithm = view.getUint8(offset + 4);
+            const certificate = new Uint8Array(view.buffer.slice(offset + 5, offset + dataLength));
+            const certificateBase64 = btoa(String.fromCharCode(...certificate));
+            
+            const data = [
+                {key: "type", value: type},
+                {key: "keyTag", value: keyTag},
+                {key: "algorithm", value: algorithm},
+                {key: "certificate", value: certificateBase64}
+            ];
+            return data;
+        },
+        serialize(rdata) {
+            const type = rdata.find(item => item.key === "type").value;
+            const keyTag = rdata.find(item => item.key === "keyTag").value;
+            const algorithm = rdata.find(item => item.key === "algorithm").value;
+            const certificateBase64 = rdata.find(item => item.key === "certificate").value;
+            const certificateBytes = Uint8Array.from(atob(certificateBase64), c => c.charCodeAt(0));
+            
+            const length = certificateBytes.length + 5;
+            const buffer = new ArrayBuffer(length);
+            const view = new DataView(buffer);
+            let offset = 0;
+            
+            view.setUint16(offset, type, false);
+            offset += 2;
+            view.setUint16(offset, keyTag, false);
+            offset += 2;
+            view.setUint8(offset, algorithm);
+            offset++;
+            certificateBytes.forEach((byte) => view.setUint8(offset++, byte));
+            
+            return new Uint8Array(buffer);
+        }
+    }
+
+    static DNAME = {
+        deserialize(view, offset) {
+            const value = DnsNameSerializer.deserialize(view, offset);
+            const data = [{key: "name", value: value.name}];
+            return data;
+        },
+        serialize(rdata) {
+            const name = rdata.find(item => item.key === "name").value;
+            const buffer = DnsNameSerializer.serialize(name);
+            return buffer;
+        }
+    }
+
+    static SSHFP = {
+        deserialize(view, offset, dataLength) {
+            const algorithm = view.getUint8(offset);
+            const fpType = view.getUint8(offset + 1);
+            const fingerprint = new Uint8Array(view.buffer.slice(offset + 2, offset + dataLength));
+            const fingerprintHex = Array.from(fingerprint).map(b => b.toString(16).padStart(2, '0')).join('');
+            
+            const data = [
+                {key: "algorithm", value: algorithm},
+                {key: "fpType", value: fpType},
+                {key: "fingerprint", value: fingerprintHex}
+            ];
+            return data;
+        },
+        serialize(rdata) {
+            const algorithm = rdata.find(item => item.key === "algorithm").value;
+            const fpType = rdata.find(item => item.key === "fpType").value;
+            const fingerprintHex = rdata.find(item => item.key === "fingerprint").value;
+            const fingerprintBytes = new Uint8Array(fingerprintHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
+            
+            const buffer = new Uint8Array(2 + fingerprintBytes.length);
+            buffer[0] = algorithm;
+            buffer[1] = fpType;
+            buffer.set(fingerprintBytes, 2);
+            
+            return buffer;
+        }
+    }
+
+    static TLSA = {
+        deserialize(view, offset, dataLength) {
+            const usage = view.getUint8(offset);
+            const selector = view.getUint8(offset + 1);
+            const matchingType = view.getUint8(offset + 2);
+            const certAssocData = new Uint8Array(view.buffer.slice(offset + 3, offset + dataLength));
+            const certAssocDataHex = Array.from(certAssocData).map(b => b.toString(16).padStart(2, '0')).join('');
+            
+            const data = [
+                {key: "usage", value: usage},
+                {key: "selector", value: selector},
+                {key: "matchingType", value: matchingType},
+                {key: "certAssocData", value: certAssocDataHex}
+            ];
+            return data;
+        },
+        serialize(rdata) {
+            const usage = rdata.find(item => item.key === "usage").value;
+            const selector = rdata.find(item => item.key === "selector").value;
+            const matchingType = rdata.find(item => item.key === "matchingType").value;
+            const certAssocDataHex = rdata.find(item => item.key === "certAssocData").value;
+            const certAssocDataBytes = new Uint8Array(certAssocDataHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
+            
+            const buffer = new Uint8Array(3 + certAssocDataBytes.length);
+            buffer[0] = usage;
+            buffer[1] = selector;
+            buffer[2] = matchingType;
+            buffer.set(certAssocDataBytes, 3);
+            
+            return buffer;
+        }
+    }
+
+    static SPF = {
+        deserialize(view, offset) {
+            const length = view.getUint8(offset);
+            const text = new TextDecoder().decode(view.buffer.slice(offset + 1, offset + 1 + length));
+            const data = [{key: "text", value: text}];
+            return data;
+        },
+        serialize(rdata) {
+            const text = rdata.find(item => item.key === "text").value;
+            const textBytes = new TextEncoder().encode(text);
+
+            const length = textBytes.length + 1;
+            const buffer = new ArrayBuffer(length);
+            const view = new DataView(buffer);
+            let offset = 0;
+
+            view.setUint8(offset, textBytes.length);
+            offset++;
+            textBytes.forEach((byte) => view.setUint8(offset++, byte));
+            return new Uint8Array(buffer);
+        }
+    }
+
+    static URI = {
+        deserialize(view, offset, dataLength) {
+            const priority = view.getUint16(offset);
+            const weight = view.getUint16(offset + 2);
+            const target = new TextDecoder().decode(view.buffer.slice(offset + 4, offset + dataLength));
+            
+            const data = [
+                {key: "priority", value: priority},
+                {key: "weight", value: weight},
+                {key: "target", value: target}
+            ];
+            return data;
+        },
+        serialize(rdata) {
+            const priority = rdata.find(item => item.key === "priority").value;
+            const weight = rdata.find(item => item.key === "weight").value;
+            const target = rdata.find(item => item.key === "target").value;
+            const targetBytes = new TextEncoder().encode(target);
+            
+            const length = targetBytes.length + 4;
+            const buffer = new ArrayBuffer(length);
+            const view = new DataView(buffer);
+            let offset = 0;
+            
+            view.setUint16(offset, priority, false);
+            offset += 2;
+            view.setUint16(offset, weight, false);
+            offset += 2;
+            targetBytes.forEach((byte) => view.setUint8(offset++, byte));
+            
+            return new Uint8Array(buffer);
+        }
+    }
+
+    static CAA = {
+        deserialize(view, offset, dataLength) {
+            const flags = view.getUint8(offset);
+            const tagLength = view.getUint8(offset + 1);
+            const tag = new TextDecoder().decode(view.buffer.slice(offset + 2, offset + 2 + tagLength));
+            const value = new TextDecoder().decode(view.buffer.slice(offset + 2 + tagLength, offset + dataLength));
+            
+            const data = [
+                {key: "flags", value: flags},
+                {key: "tag", value: tag},
+                {key: "value", value: value}
+            ];
+            return data;
+        },
+        serialize(rdata) {
+            const flags = rdata.find(item => item.key === "flags").value;
+            const tag = rdata.find(item => item.key === "tag").value;
+            const value = rdata.find(item => item.key === "value").value;
+            
+            const tagBytes = new TextEncoder().encode(tag);
+            const valueBytes = new TextEncoder().encode(value);
+            
+            const buffer = new Uint8Array(2 + tagBytes.length + valueBytes.length);
+            buffer[0] = flags;
+            buffer[1] = tagBytes.length;
+            buffer.set(tagBytes, 2);
+            buffer.set(valueBytes, 2 + tagBytes.length);
+            
+            return buffer;
         }
     }
 }
