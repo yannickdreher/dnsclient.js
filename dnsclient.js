@@ -2424,39 +2424,63 @@ export async function sign(message, name, secret) {
         }
     );
 
+    // 1. Zuerst die Nachricht ohne TSIG serialisieren
     const messageBytes = DnsSerializer.serialize(message);
+    
+    // 2. TSIG-Daten für die Signatur vorbereiten (ohne MAC)
     const nameBytes = DnsNameSerializer.serialize(name);
     const algorithmBytes = DnsNameSerializer.serialize(tsig.data.algorithm);
     const timestampHigh = Number((tsig.data.timestamp >> 32n) & 0xFFFFn);
     const timestampLow = Number(tsig.data.timestamp & 0xFFFFFFFFn);
     const secretBytes = Uint8Array.from(atob(secret), c => c.charCodeAt(0));
 
-    let length = messageBytes.byteLength + nameBytes.byteLength + algorithmBytes.byteLength + 18;
-    let offset = 0;
-    const buffer = new ArrayBuffer(length);
+    // 3. Buffer für die Signatur erstellen (RFC 2845 Format)
+    const signatureLength = messageBytes.byteLength + nameBytes.byteLength + 2 + 4 + 
+                           algorithmBytes.byteLength + 6 + 2 + 2 + 2 + tsig.data.otherData.byteLength;
+    
+    const buffer = new ArrayBuffer(signatureLength);
     const view = new DataView(buffer);
+    let offset = 0;
 
+    // Message bytes
     messageBytes.forEach((byte) => view.setUint8(offset++, byte));
+    
+    // TSIG Name
     nameBytes.forEach((byte) => view.setUint8(offset++, byte));
+    
+    // TSIG Class
     view.setUint16(offset, tsig.clazz, false);
     offset += 2;
-    view.setUint32(offset, tsig.ttl,  false);
+    
+    // TSIG TTL
+    view.setUint32(offset, tsig.ttl, false);
     offset += 4;
+    
+    // Algorithm Name
     algorithmBytes.forEach((byte) => view.setUint8(offset++, byte));
-    view.setUint16(offset, timestampHigh);
+    
+    // Time Signed (48 bits)
+    view.setUint16(offset, timestampHigh, false);
     offset += 2;
-    view.setUint32(offset, timestampLow);
+    view.setUint32(offset, timestampLow, false);
     offset += 4;
-    view.setUint16(offset, tsig.data.fudge);
+    
+    // Fudge
+    view.setUint16(offset, tsig.data.fudge, false);
     offset += 2;
-    view.setUint16(offset, tsig.data.originalId);
+    
+    // Error
+    view.setUint16(offset, tsig.data.error, false);
     offset += 2;
-    view.setUint16(offset, tsig.data.error);
+    
+    // Other Len
+    view.setUint16(offset, tsig.data.otherData.byteLength, false);
     offset += 2;
-    view.setUint16(offset, tsig.data.otherData.byteLength);
-    offset += 2;
+    
+    // Other Data
     tsig.data.otherData.forEach((byte) => view.setUint8(offset++, byte));
 
+    // 4. HMAC-SHA256 Signatur berechnen
     const key = await crypto.subtle.importKey(
         "raw",
         secretBytes,
@@ -2464,15 +2488,13 @@ export async function sign(message, name, secret) {
         false,
         ["sign"]
     );
-    const sig = await crypto.subtle.sign(
-        "HMAC",
-        key,
-        buffer
-    );
-
-    tsig.data.mac = new Uint8Array(sig);
+    
+    const signature = await crypto.subtle.sign("HMAC", key, buffer);
+    tsig.data.mac = new Uint8Array(signature);
+    
+    // 5. TSIG zur Nachricht hinzufügen
     message.additionals.push(tsig);
-    message.adcount = message.additionals.length;
+    
     return message;
 }
 
