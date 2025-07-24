@@ -17,7 +17,6 @@ It supports extensive DNS record types and handles DNS response parsing, includi
 - 🛠️ **Service Discovery** - SRV, NAPTR, SVCB, HTTPS records
 - 🧪 **Extensive Testing** - Comprehensive test suite with 100% coverage
 - ⚡ **Performance Optimized** - Efficient binary parsing and compression
-- 🔧 **TSIG Authentication** - Transaction signatures for secure updates
 
 ## Supported DNS Record Types
 
