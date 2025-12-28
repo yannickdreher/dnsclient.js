@@ -8,6 +8,91 @@
  * License: MIT License (https://opensource.org/licenses/MIT)
  * Copyright © 2024-2025 Yannick Dreher
  */
+
+/**
+ * @typedef {Object} DNSHeaderFlags
+ * @property {number} qr - Query/Response flag (0=query, 1=response)
+ * @property {number} opcode - Operation code
+ * @property {boolean} aa - Authoritative Answer flag
+ * @property {boolean} tc - Truncation flag
+ * @property {boolean} rd - Recursion Desired flag
+ * @property {boolean} ra - Recursion Available flag
+ * @property {number} rcode - Response code
+ */
+
+/**
+ * @typedef {Object} DNSQuestion
+ * @property {string} name - Domain name
+ * @property {number} type - Record type
+ * @property {number} clazz - Record class
+ */
+
+/**
+ * @typedef {Object} DNSRecord
+ * @property {string} name - Domain name
+ * @property {number} type - Record type
+ * @property {number} clazz - Record class
+ * @property {number} ttl - Time to live in seconds
+ * @property {Uint8Array|Array<{key: string, value: *}>} data - Record data
+ */
+
+/**
+ * @typedef {Object} DNSMessage
+ * @property {number} id - Message identifier
+ * @property {DNSHeaderFlags} flags - Header flags
+ */
+
+/**
+ * @typedef {Object} DNSQueryMessage
+ * @extends {DNSMessage}
+ * @property {number} qdcount - Number of questions
+ * @property {number} ancount - Number of answers
+ * @property {number} nscount - Number of authority records
+ * @property {number} arcount - Number of additional records
+ * @property {Array<DNSQuestion|DNSRecord>} questions - Question section
+ * @property {Array<DNSRecord>} answers - Answer section
+ * @property {Array<DNSRecord>} authorities - Authority section
+ * @property {Array<DNSRecord>} additionals - Additional section
+ */
+
+/**
+ * @typedef {Object} DNSUpdateMessage
+ * @extends {DNSMessage}
+ * @property {number} zcount - Number of zones
+ * @property {number} prcount - Number of prerequisites
+ * @property {number} upcount - Number of updates
+ * @property {number} adcount - Number of additional records
+ * @property {Array<DNSRecord>} zones - Zone section
+ * @property {Array<DNSRecord>} prerequisites - Prerequisite section
+ * @property {Array<DNSRecord>} updates - Update section
+ * @property {Array<DNSRecord>} additionals - Additional section
+ */
+
+/**
+ * @typedef {Object} DNSQueryResult
+ * @property {DNSQueryMessage|DNSUpdateMessage} result - DNS response message
+ * @property {number} latency - Query latency in milliseconds
+ */
+
+/**
+ * @typedef {Object} RDataItem
+ * @property {string} key - Field name
+ * @property {*} value - Field value
+ */
+
+/**
+ * @typedef {Object} DeserializedName
+ * @property {string} name - The deserialized domain name
+ * @property {number} offset - Next offset after the name
+ * @property {number} length - Length of the name in bytes
+ */
+
+/**
+ * @typedef {Object} DeserializedRecord
+ * @property {DNSRecord|DNSQuestion} record - The deserialized record
+ * @property {number} offset - Next offset after the record
+ */
+
 // Enums
 export const QR_NAMES = Object.freeze({
     0: "QUERY",
@@ -218,8 +303,14 @@ export const OPCODE = Object.freeze({
 })
 
 // Models
+/**
+ * Base DNS message class
+ * @class
+ */
 class Message {
+    /** @type {number} - Message ID (0-65535) */
     id = Math.floor(Math.random() * 0x10000);
+    /** @type {DNSHeaderFlags} - DNS header flags */
     flags = {
         qr: 0,
         opcode: 0,
@@ -231,15 +322,32 @@ class Message {
     };
 }
 
+/**
+ * DNS Query Message
+ * @class
+ * @extends Message
+ */
 export class QueryMessage extends Message {
+    /** @returns {number} Number of questions */
     get qdcount() { return this.questions.length };
+    /** @returns {number} Number of answers */
     get ancount() { return this.answers.length };
+    /** @returns {number} Number of authority records */
     get nscount() { return this.authorities.length };
+    /** @returns {number} Number of additional records */
     get arcount() { return this.additionals.length };
+    /** @type {Array<DNSQuestion|DNSRecord>} */
     questions = [];
+    /** @type {Array<DNSRecord>} */
     answers = [];
+    /** @type {Array<DNSRecord>} */
     authorities = [];
+    /** @type {Array<DNSRecord>} */
     additionals = [];
+    /**
+     * Creates a new DNS query message
+     * @constructor
+     */
     constructor() {
         super();
         this.flags.rd = true;
@@ -247,49 +355,123 @@ export class QueryMessage extends Message {
     }
 }
 
+/**
+ * DNS Update Message (RFC 2136)
+ * @class
+ * @extends Message
+ */
 export class UpdateMessage extends Message {
+    /** @returns {number} Number of zones */
     get zcount() { return this.zones.length };
+    /** @returns {number} Number of prerequisites */
     get prcount() { return this.prerequisites.length };
+    /** @returns {number} Number of updates */
     get upcount() { return this.updates.length };
+    /** @returns {number} Number of additional records */
     get adcount() { return this.additionals.length };
+    /** @type {Array<DNSRecord>} */
     zones = [];
+    /** @type {Array<DNSRecord>} */
     prerequisites = [];
+    /** @type {Array<DNSRecord>} */
     updates = [];
+    /** @type {Array<DNSRecord>} */
     additionals = [];
+    /**
+     * Creates a new DNS update message
+     * @constructor
+     */
     constructor() {
         super();
         this.flags.opcode = OPCODE.UPDATE;
     }
 }
 
+/**
+ * DNS Resource Record
+ * @class
+ */
 export class Record {
+    /**
+     * Creates a new DNS resource record
+     * @constructor
+     * @param {string} name - Domain name
+     * @param {number} type - Record type (from TYPE enum)
+     * @param {number} clazz - Record class (from CLAZZ enum)
+     * @param {number} [ttl=0] - Time to live in seconds
+     * @param {Uint8Array|Object|Array<RDataItem>} [data=new Uint8Array(0)] - Record data
+     */
     constructor(name, type, clazz, ttl = 0, data = new Uint8Array(0)) {
+        /** @type {string} */
         this.name = name;
+        /** @type {number} */
         this.type = type;
+        /** @type {number} */
         this.clazz = clazz;
+        /** @type {number} */
         this.ttl = ttl;
+        /** @type {Uint8Array|Object|Array<RDataItem>} */
         this.data = data;
     }
 }
 
+/**
+ * DNS Question
+ * @class
+ */
 export class Question {
+    /**
+     * Creates a new DNS question
+     * @constructor
+     * @param {string} name - Domain name to query
+     * @param {number} [type=TYPE.ANY] - Record type to query (from TYPE enum)
+     * @param {number} [clazz=CLAZZ.ANY] - Record class to query (from CLAZZ enum)
+     */
     constructor(name, type = TYPE.ANY, clazz = CLAZZ.ANY) {
+        /** @type {string} */
         this.name = name;
+        /** @type {number} */
         this.type = type;
+        /** @type {number} */
         this.clazz = clazz;
     }
 }
 
+/**
+ * DNS Zone (for UPDATE messages)
+ * @class
+ */
 export class Zone {
+    /**
+     * Creates a new DNS zone
+     * @constructor
+     * @param {string} name - Zone name
+     * @param {number} [type=TYPE.SOA] - Zone type (from TYPE enum)
+     * @param {number} [clazz=CLAZZ.IN] - Zone class (from CLAZZ enum)
+     */
     constructor(name, type = TYPE.SOA, clazz = CLAZZ.IN) {
+        /** @type {string} */
         this.name = name;
+        /** @type {number} */
         this.type = type;
+        /** @type {number} */
         this.clazz = clazz;
     }
 }
 
 // Classes
+/**
+ * DNS Message Serializer/Deserializer
+ * @class
+ */
 export class DnsSerializer {
+    /**
+     * Deserializes a DNS message from binary buffer
+     * @static
+     * @param {ArrayBuffer} buffer - Binary DNS message
+     * @returns {QueryMessage|UpdateMessage} Deserialized DNS message
+     * @throws {Error} If buffer is invalid or too small
+     */
     static deserialize(buffer) {
         const view = new DataView(buffer);
         const id = view.getUint16(0);
@@ -360,6 +542,13 @@ export class DnsSerializer {
         }
     }
 
+    /**
+     * Serializes a DNS message to binary buffer
+     * @static
+     * @param {QueryMessage|UpdateMessage} message - DNS message to serialize
+     * @returns {Uint8Array} Binary DNS message
+     * @throws {Error} If message is invalid
+     */
     static serialize(message) {
         let buffer = new ArrayBuffer(1024);
         let view = new DataView(buffer);
@@ -432,7 +621,16 @@ export class DnsSerializer {
         return new Uint8Array(buffer.slice(0, offset));
     }
 
+    /**
+     * DNS Header Flags serializer/deserializer
+     * @static
+     */
     static HeaderFlags = {
+        /**
+         * Deserializes DNS header flags from 16-bit integer
+         * @param {number} buffer - 16-bit flags value
+         * @returns {DNSHeaderFlags} Deserialized header flags
+         */
         deserialize(buffer) {
             const qr = (buffer >> 15) & 1;
             const opcode = (buffer >> 11) & 0xF;
@@ -443,6 +641,13 @@ export class DnsSerializer {
             const rcode = buffer & 0xF; 
             return {qr, opcode, aa, tc, rd, ra, rcode};
         },
+        /**
+         * Serializes DNS header flags to 16-bit integer
+         * @param {DataView} view - DataView to write to
+         * @param {number} offset - Offset in the view
+         * @param {DNSHeaderFlags} flags - Header flags to serialize
+         * @returns {number} New offset after serialization
+         */
         serialize(view, offset, flags) {
             const buffer =
                 ((flags.qr & 1) << 15) |
@@ -458,7 +663,19 @@ export class DnsSerializer {
     }
 }
 
+/**
+ * DNS Name (Domain Name) Serializer/Deserializer
+ * Handles DNS name compression (RFC 1035)
+ * @class
+ */
 export class DnsNameSerializer {
+    /**
+     * Deserializes a DNS domain name from binary format
+     * @static
+     * @param {DataView} view - DataView containing the DNS message
+     * @param {number} offset - Starting offset of the name
+     * @returns {DeserializedName} Deserialized domain name with offset and length
+     */
     static deserialize(view, offset) {
         let labels = [];
         let length = view.getUint8(offset);
@@ -487,6 +704,12 @@ export class DnsNameSerializer {
         return { name, offset: jumpOffset, length: jumpOffset - initialOffset };
     }
 
+    /**
+     * Serializes a domain name to DNS binary format
+     * @static
+     * @param {string} name - Domain name to serialize (e.g., "example.com")
+     * @returns {Uint8Array} Binary representation of the domain name
+     */
     static serialize(name) {
         if (name === "." || name === "") {
             return new Uint8Array([0]);
@@ -515,7 +738,21 @@ export class DnsNameSerializer {
     }
 }
 
+/**
+ * DNS Resource Record Serializer/Deserializer
+ * Handles all DNS record types (A, AAAA, MX, TXT, etc.)
+ * @class
+ */
 export class DnsRecordSerializer {
+    /**
+     * Deserializes a DNS resource record from binary format
+     * @static
+     * @param {DataView} view - DataView containing the DNS message
+     * @param {number} offset - Starting offset of the record
+     * @param {boolean} [question=false] - Whether this is a question section record
+     * @param {boolean} [zone=false] - Whether this is a zone section record
+     * @returns {DeserializedRecord} Deserialized record with new offset
+     */
     static deserialize(view, offset, question = false, zone = false) {
         const name = DnsNameSerializer.deserialize(view, offset);
         offset = name.offset;
@@ -643,6 +880,14 @@ export class DnsRecordSerializer {
         return {record, offset};
     }
 
+    /**
+     * Serializes a DNS resource record to binary format
+     * @static
+     * @param {DataView} view - DataView to write to
+     * @param {number} offset - Starting offset
+     * @param {DNSRecord|DNSQuestion|Zone} record - Record to serialize
+     * @returns {number} New offset after serialization
+     */
     static serialize(view, offset, record) {
         const nameBytes = DnsNameSerializer.serialize(record.name);
         nameBytes.forEach((byte) => view.setUint8(offset++, byte));
@@ -763,7 +1008,18 @@ export class DnsRecordSerializer {
         return offset;
     }
 
+    /**
+     * A Record (IPv4 address) serializer
+     * @static
+     */
     static A = {
+        /**
+         * @param {DataView} view - DataView containing the record
+         * @param {number} offset - Starting offset
+         * @param {number} dataLength - Length of the record data
+         * @returns {Array<RDataItem>} Deserialized A record data
+         * @throws {Error} If data length is not 4 bytes
+         */
         deserialize(view, offset, dataLength) {
             if (dataLength !== 4) {
                 throw new Error("Invalid IPv4 byte array length.");
@@ -772,6 +1028,10 @@ export class DnsRecordSerializer {
             const data = [{key: "ipv4", value: ipv4}];
             return data;
         },
+        /**
+         * @param {Array<RDataItem>} rdata - Record data to serialize
+         * @returns {Uint8Array} Serialized A record
+         */
         serialize(rdata) {
             const value = rdata.find(item => item.key === "ipv4").value;
             const parts = value.split(".").map(Number);
@@ -780,12 +1040,25 @@ export class DnsRecordSerializer {
         }
     }
 
+    /**
+     * NS Record (Name Server) serializer
+     * @static
+     */
     static NS = {
+        /**
+         * @param {DataView} view - DataView containing the record
+         * @param {number} offset - Starting offset
+         * @returns {Array<RDataItem>} Deserialized NS record data
+         */
         deserialize(view, offset) {
             const value = DnsNameSerializer.deserialize(view, offset);
             const data = [{key: "name", value: value.name}];
             return data;
         },
+        /**
+         * @param {Array<RDataItem>} rdata - Record data to serialize
+         * @returns {Uint8Array} Serialized NS record
+         */
         serialize(rdata) {
             const name = rdata.find(item => item.key === "name").value;
             const buffer = DnsNameSerializer.serialize(name);
@@ -832,7 +1105,16 @@ export class DnsRecordSerializer {
         }
     }
     
+    /**
+     * SOA Record (Start of Authority) serializer
+     * @static
+     */
     static SOA = {
+        /**
+         * @param {DataView} view - DataView containing the record
+         * @param {number} offset - Starting offset
+         * @returns {Array<RDataItem>} Deserialized SOA record data
+         */
         deserialize(view, offset) {
             const mname = DnsNameSerializer.deserialize(view, offset);
             offset = mname.offset;
@@ -854,6 +1136,10 @@ export class DnsRecordSerializer {
             ];
             return data;
         },
+        /**
+         * @param {Array<RDataItem>} rdata - Record data to serialize
+         * @returns {Uint8Array} Serialized SOA record
+         */
         serialize(rdata) {
             const mname = rdata.find(item => item.key === "mname").value;
             const mnameBytes = DnsNameSerializer.serialize(mname);
@@ -927,7 +1213,17 @@ export class DnsRecordSerializer {
         }
     }
 
+    /**
+     * WKS Record (Well-Known Services) serializer
+     * @static
+     */
     static WKS = {
+        /**
+         * @param {DataView} view - DataView containing the record
+         * @param {number} offset - Starting offset
+         * @param {number} dataLength - Length of the record data
+         * @returns {Array<RDataItem>} Deserialized WKS record data
+         */
         deserialize(view, offset, dataLength) {
             const address = new Uint8Array(view.buffer.slice(offset, offset + 4)).join(".");
             const protocol = view.getUint8(offset + 4);
@@ -949,6 +1245,10 @@ export class DnsRecordSerializer {
             ];
             return data;
         },
+        /**
+         * @param {Array<RDataItem>} rdata - Record data to serialize
+         * @returns {Uint8Array} Serialized WKS record
+         */
         serialize(rdata) {
             const address = rdata.find(item => item.key === "address").value;
             const protocol = rdata.find(item => item.key === "protocol").value;
@@ -1101,7 +1401,16 @@ export class DnsRecordSerializer {
         }
     }
     
+    /**
+     * MX Record (Mail Exchange) serializer
+     * @static
+     */
     static MX = {
+        /**
+         * @param {DataView} view - DataView containing the record
+         * @param {number} offset - Starting offset
+         * @returns {Array<RDataItem>} Deserialized MX record data
+         */
         deserialize(view, offset) {
             const preference = view.getUint16(offset);
             const exchange = DnsNameSerializer.deserialize(view, offset + 2);
@@ -1128,7 +1437,18 @@ export class DnsRecordSerializer {
         }
     }
     
+    /**
+     * AAAA Record (IPv6 address) serializer
+     * @static
+     */
     static AAAA = {
+        /**
+         * @param {DataView} view - DataView containing the record
+         * @param {number} offset - Starting offset
+         * @param {number} dataLength - Length of the record data
+         * @returns {Array<RDataItem>} Deserialized AAAA record data
+         * @throws {Error} If data length is not 16 bytes
+         */
         deserialize(view, offset, dataLength) {
             if (dataLength !== 16) {
                 throw new Error("Invalid IPv6 byte array length.");
@@ -1143,6 +1463,10 @@ export class DnsRecordSerializer {
             const data = [{key: "ipv6", value: ipv6}];
             return data;
         },
+        /**
+         * @param {Array<RDataItem>} rdata - Record data to serialize
+         * @returns {Uint8Array} Serialized AAAA record
+         */
         serialize(rdata) {
             const value = rdata.find(item => item.key === "ipv6").value;
             const parts = value.split(":");
@@ -1245,7 +1569,16 @@ export class DnsRecordSerializer {
         }
     }
     
+    /**
+     * TXT Record (Text) serializer
+     * @static
+     */
     static TXT = {
+        /**
+         * @param {DataView} view - DataView containing the record
+         * @param {number} offset - Starting offset
+         * @returns {Array<RDataItem>} Deserialized TXT record data
+         */
         deserialize(view, offset) {
             const length = view.getUint8(offset);
             const text = new TextDecoder().decode(view.buffer.slice(offset + 1, offset + 1 + length));
@@ -2407,6 +2740,15 @@ export class DnsRecordSerializer {
 }
 
 // Functions
+/**
+ * Signs a DNS message with TSIG (Transaction Signature - RFC 2845)
+ * @async
+ * @param {QueryMessage|UpdateMessage} message - DNS message to sign
+ * @param {string} name - TSIG key name
+ * @param {string} secret - Base64-encoded shared secret
+ * @returns {Promise<QueryMessage|UpdateMessage>} Signed DNS message with TSIG record
+ * @throws {Error} If signing fails
+ */
 export async function sign(message, name, secret) {
     const tsig = new Record(
         name,
@@ -2476,6 +2818,12 @@ export async function sign(message, name, secret) {
     return message;
 }
 
+/**
+ * Interprets numeric DNS values to human-readable strings
+ * Converts type/class numbers to names (e.g., 1 -> "A", "IN")
+ * @param {QueryMessage|UpdateMessage} message - DNS message to interpret
+ * @returns {QueryMessage|UpdateMessage} Message with interpreted values
+ */
 export function interpret(message) {
     switch (message.flags.opcode) {
         case OPCODE.QUERY:
@@ -2521,6 +2869,15 @@ export function interpret(message) {
     return message;
 }
 
+/**
+ * Sends a DNS query over HTTPS (DoH - RFC 8484)
+ * @async
+ * @param {string} url - DNS-over-HTTPS server URL
+ * @param {QueryMessage|UpdateMessage} message - DNS message to send
+ * @param {boolean} [interpreted=false] - Whether to interpret numeric values as strings
+ * @returns {Promise<DNSQueryResult>} Query result with latency
+ * @throws {Error} If the request fails or URL is invalid
+ */
 export async function query(url, message, interpreted = false) {
     let result = "";
     const query = DnsSerializer.serialize(message);
