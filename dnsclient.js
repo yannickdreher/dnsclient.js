@@ -1,6 +1,6 @@
 /*
  * Project:  dnsclient.js
- * File:     src/dnsclient.js
+ * File:     dnsclient.js
  * Author:   Yannick Dreher (yannick.dreher@dremaxx.de)
  * -----
  * Created:  Friday, 29th November 2024 3:30:10 pm

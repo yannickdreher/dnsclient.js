@@ -23,15 +23,5 @@ jobs:
         run: npm test
       - name: Compress and mangle
         run: npx terser dnsclient.js --compress --mangle --output dnsclient.min.js
-      - name: Set headers
-        run: |
-          FILES=("dnsclient.js" "dnsclient.min.js")
-          MODIFIED_DATE=$(date +"%A, %dth %B %Y %I:%M:%S %P")
-  
-          for FILE in "${FILES[@]}"; do
-            HEADER=$(sed "s#{{FILENAME}}#$FILE#; s#{{MODIFIED_DATE}}#$MODIFIED_DATE#" header.tmpl)
-            sed -i '/\/\*/,/\*\//d' "$FILE"
-            echo -e "$HEADER\n$(cat $FILE)" > "$FILE"
-          done
       - name: Publish package
         run: npm publish
