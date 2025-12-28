@@ -466,6 +466,93 @@ export class Zone {
  */
 export class DnsSerializer {
     /**
+     * Estimates the required buffer size for a DNS message
+     * @static
+     * @private
+     * @param {QueryMessage|UpdateMessage} message - DNS message to estimate
+     * @returns {number} Estimated buffer size in bytes
+     */
+    static estimateMessageSize(message) {
+        const DNS_HEADER_SIZE = 12;
+        let size = DNS_HEADER_SIZE;
+        
+        /**
+         * Estimates the size of a domain name (without compression)
+         * @param {string} name - Domain name
+         * @returns {number} Estimated size
+         */
+        const estimateNameSize = (name) => {
+            if (name === "." || name === "") return 1;
+            const labels = name.split(".").filter(l => l !== "");
+            return labels.reduce((sum, label) => sum + label.length + 1, 0) + 1;
+        };
+        
+        /**
+         * Estimates the size of a record
+         * @param {DNSRecord|DNSQuestion|Zone} record - Record to estimate
+         * @param {boolean} isQuestion - Whether this is a question record
+         * @returns {number} Estimated size
+         */
+        const estimateRecordSize = (record, isQuestion = false) => {
+            let recordSize = estimateNameSize(record.name);
+            recordSize += 4; // type (2) + class (2)
+            
+            if (!isQuestion) {
+                recordSize += 4; // ttl (4)
+                recordSize += 2; // rdlength (2)
+                
+                // Estimate RDATA size
+                if (record.data) {
+                    if (record.data instanceof Uint8Array) {
+                        recordSize += record.data.byteLength;
+                    } else if (Array.isArray(record.data)) {
+                        recordSize += 256;
+                    } else if (typeof record.data === "object") {
+                        recordSize += 256;
+                    }
+                }
+            }
+            
+            return recordSize;
+        };
+        
+        // Calculate size based on message type
+        switch (message.flags.opcode) {
+            case OPCODE.QUERY:
+                message.questions.forEach(q => {
+                    size += estimateRecordSize(q, true);
+                });
+                message.answers.forEach(r => {
+                    size += estimateRecordSize(r, false);
+                });
+                message.authorities.forEach(r => {
+                    size += estimateRecordSize(r, false);
+                });
+                message.additionals.forEach(r => {
+                    size += estimateRecordSize(r, false);
+                });
+                break;
+            case OPCODE.UPDATE:
+                message.zones.forEach(z => {
+                    size += estimateRecordSize(z, true);
+                });
+                message.prerequisites.forEach(r => {
+                    size += estimateRecordSize(r, false);
+                });
+                message.updates.forEach(r => {
+                    size += estimateRecordSize(r, false);
+                });
+                message.additionals.forEach(r => {
+                    size += estimateRecordSize(r, false);
+                });
+                break;
+        }
+        
+        // Add 10% safety margin
+        return Math.ceil(size * 1.1);
+    }
+
+    /**
      * Deserializes a DNS message from binary buffer
      * @static
      * @param {ArrayBuffer} buffer - Binary DNS message
@@ -550,7 +637,9 @@ export class DnsSerializer {
      * @throws {Error} If message is invalid
      */
     static serialize(message) {
-        let buffer = new ArrayBuffer(1024);
+        // Calculate required buffer size dynamically
+        const estimatedSize = this.estimateMessageSize(message);
+        let buffer = new ArrayBuffer(estimatedSize);
         let view = new DataView(buffer);
         let offset = 0;
         view.setUint16(offset, message.id, false);
