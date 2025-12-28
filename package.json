@@ -27,9 +27,9 @@
   "author": "Yannick Dreher",
   "license": "MIT",
   "bugs": {
-    "url": "https://gitlab.dremaxx.de/yannick/dnsclient.js/-/issues"
+    "url": "https://github.com/yannickdreher/dnsclient.js/issues"
   },
-  "homepage": "https://gitlab.dremaxx.de/yannick/dnsclient.js",
+  "homepage": "https://github.com/yannickdreher/dnsclient.js",
   "devDependencies": {
     "jest": "^29.7.0"
   }
