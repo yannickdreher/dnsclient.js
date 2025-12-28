@@ -1,6 +1,6 @@
 {
   "name": "dnsclient.js",
-  "version": "1.0.0",
+  "version": "1.0.20",
   "description": "JavaScript library for performing DNS queries over HTTPS",
   "main": "dnsclient.js",
   "type": "module",
@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://gitlab.dremaxx.de/yannick/dnsclient.js.git"
+    "url": "git+https://github.com/yannickdreher/dnsclient.js.git"
   },
   "keywords": [
     "DNS",
