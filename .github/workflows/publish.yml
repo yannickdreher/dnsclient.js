@@ -1,33 +1,37 @@
-# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
-# For more information see: https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
-
 name: Publish
 
 on:
   release:
     types: [created]
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm ci
-      - run: npm test
+permissions:
+  id-token: write
+  contents: read
 
+jobs:
   publish:
-    needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
         with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org/
-      - run: npm ci
-      - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPMJS}}
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test
+      - name: Compress and mangle
+        run: npx terser dnsclient.js --compress --mangle --output dnsclient.min.js
+      - name: Set headers
+        run: |
+          FILES=("dnsclient.js" "dnsclient.min.js")
+          MODIFIED_DATE=$(date +"%A, %dth %B %Y %I:%M:%S %P")
+  
+          for FILE in "${FILES[@]}"; do
+            HEADER=$(sed "s#{{FILENAME}}#$FILE#; s#{{MODIFIED_DATE}}#$MODIFIED_DATE#" header.tmpl)
+            sed -i '/\/\*/,/\*\//d' "$FILE"
+            echo -e "$HEADER\n$(cat $FILE)" > "$FILE"
+          done
+      - name: Publish package
+        run: npm publish
