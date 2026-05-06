@@ -1,5 +1,5 @@
-﻿[![Pipeline Status](https://gitlab.dremaxx.de/yannick/dnsclient.js/badges/main/pipeline.svg)](https://gitlab.dremaxx.de/yannick/dnsclient.js/-/commits/main)
-[![Latest Release](https://gitlab.dremaxx.de/yannick/dnsclient.js/-/badges/release.svg)](https://gitlab.dremaxx.de/yannick/dnsclient.js/-/releases)
+﻿[![Tests](https://github.com/yannickdreher/dnsclient.js/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/yannickdreher/dnsclient.js/actions/workflows/tests.yml)
+[![Latest Release](https://img.shields.io/github/v/release/yannickdreher/dnsclient.js?label=Latest%20Release&sort=semver)](https://github.com/yannickdreher/dnsclient.js/releases)
 [![jsDelivr](https://data.jsdelivr.com/v1/package/npm/dnsclient.js/badge)](https://www.jsdelivr.com/package/npm/dnsclient.js)
 
 # dnsclient.js
