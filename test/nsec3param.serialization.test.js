@@ -1,12 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "NSEC3PARAM" should be serialized correctly', () => {
-    const rdata = [
-        {key: "algorithm", value: 1},
-        {key: "flags", value: 0},
-        {key: "iterations", value: 12},
-        {key: "salt", value: "aabbcc"}
-    ];
+    const rdata = { algorithm: 1, flags: 0, iterations: 12, salt: "aabbcc" };
     const edata = new Uint8Array([
         0x01,                   // Algorithm: 1
         0x00,                   // Flags: 0

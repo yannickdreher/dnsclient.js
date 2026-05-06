@@ -1,9 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "MG" should be serialized correctly', () => {
-    const rdata = [
-        {key: "name", value: "group.example.com"}
-    ];
+    const rdata = { name: "group.example.com" };
     const edata = new Uint8Array([
         0x05, 0x67, 0x72, 0x6F, 0x75, 0x70, // "group"
         0x07, 0x65, 0x78, 0x61, 0x6D, 0x70, 0x6C, 0x65, // "example"

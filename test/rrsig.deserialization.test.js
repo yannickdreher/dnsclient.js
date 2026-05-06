@@ -27,38 +27,39 @@ describe('Record type "RRSIG" should deserialize the data correctly', () => {
     const result = dnsclient.DnsRecordSerializer.RRSIG.deserialize(view, 0, data.length);
 
     test('typeCovered is A', () => {
-        expect(result[0].value).toBe('A');
+        expect(result.typeCovered).toBe('A');
     });
 
     test('algorithm is 8', () => {
-        expect(result[1].value).toBe(8);
+        expect(result.algorithm).toBe(8);
     });
 
     test('labels is 2', () => {
-        expect(result[2].value).toBe(2);
+        expect(result.labels).toBe(2);
     });
 
     test('originalTtl is 86400', () => {
-        expect(result[3].value).toBe(86400);
+        expect(result.originalTtl).toBe(86400);
     });
 
     test('expiration is 1970-01-02T01:20:31.000Z', () => {
-        expect(result[4].value.toISOString()).toBe(new Date('1970-01-02T01:20:31.000Z').toISOString());
+        expect(result.expiration.toISOString()).toBe(new Date('1970-01-02T01:20:31.000Z').toISOString());
     });
 
     test('inception is 1970-01-02T01:11:57.000Z', () => {
-        expect(result[5].value.toISOString()).toBe(new Date('1970-01-02T01:11:57.000Z').toISOString());
+        expect(result.inception.toISOString()).toBe(new Date('1970-01-02T01:11:57.000Z').toISOString());
     });
 
     test('keyTag is 12345', () => {
-        expect(result[6].value).toBe(12345);
+        expect(result.keyTag).toBe(12345);
     });
 
     test('signersName is example.com', () => {
-        expect(result[7].value).toBe('example.com');
+        expect(result.signersName).toBe('example.com');
     });
 
     test('signature is correct', () => {
-        expect(result[8].value).toBe('VGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIDEzIGxhenkgZG9ncy4=');
+        expect(result.signature).toBe(
+            'VGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIDEzIGxhenkgZG9ncy4=');
     });
 });

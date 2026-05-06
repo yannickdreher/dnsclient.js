@@ -1,9 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "MR" should be serialized correctly', () => {
-    const rdata = [
-        {key: "name", value: "rename.example.com"}
-    ];
+    const rdata = { name: "rename.example.com" };
     const edata = new Uint8Array([
         0x06, 0x72, 0x65, 0x6E, 0x61, 0x6D, 0x65, // "rename"
         0x07, 0x65, 0x78, 0x61, 0x6D, 0x70, 0x6C, 0x65, // "example"

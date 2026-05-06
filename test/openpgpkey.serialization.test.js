@@ -1,9 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "OPENPGPKEY" should be serialized correctly', () => {
-    const rdata = [
-        {key: "publickey", value: "VGVzdEtleURhdGE="} // "TestKeyData" in base64
-    ];
+    const rdata = { publickey: "VGVzdEtleURhdGE=" };
     const edata = new Uint8Array([
         0x54, 0x65, 0x73, 0x74, 0x4B, 0x65, 0x79, 0x44, 0x61, 0x74, 0x61 // "TestKeyData"
     ]);

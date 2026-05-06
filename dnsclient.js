@@ -218,8 +218,20 @@ export const OPCODE = Object.freeze({
 })
 
 // Models
+function generateTransactionId() {
+    // Use a CSPRNG for the DNS transaction ID to mitigate spoofing.
+    // Falls back to Math.random only if no Web Crypto is available.
+    const g = (typeof globalThis !== "undefined" ? globalThis : undefined);
+    if (g && g.crypto && typeof g.crypto.getRandomValues === "function") {
+        const buf = new Uint16Array(1);
+        g.crypto.getRandomValues(buf);
+        return buf[0];
+    }
+    return Math.floor(Math.random() * 0x10000);
+}
+
 class Message {
-    id = Math.floor(Math.random() * 0x10000);
+    id = generateTransactionId();
     flags = {
         qr: 0,
         opcode: 0,
@@ -361,8 +373,25 @@ export class DnsSerializer {
     }
 
     static serialize(message) {
+        // Start with a reasonable size and grow on demand. Fixes RangeError
+        // for messages > 1024 bytes (large updates, many answers, TSIG, etc.).
         let buffer = new ArrayBuffer(1024);
         let view = new DataView(buffer);
+        const ensureCapacity = (needed) => {
+            if (needed <= buffer.byteLength) return;
+            let size = buffer.byteLength;
+            while (size < needed) size *= 2;
+            const next = new ArrayBuffer(size);
+            new Uint8Array(next).set(new Uint8Array(buffer));
+            buffer = next;
+            view = new DataView(buffer);
+        };
+        // Wrap DnsRecordSerializer.serialize so we can grow the buffer as needed.
+        const serializeRecord = (record) => {
+            // Worst-case upper bound for any single record we serialize today.
+            ensureCapacity(offset + 65535 + 512);
+            return DnsRecordSerializer.serialize(view, offset, record);
+        };
         let offset = 0;
         view.setUint16(offset, message.id, false);
         offset += 2;
@@ -379,22 +408,22 @@ export class DnsSerializer {
                 offset += 2;
                 if (message.questions.length > 0) {
                     for (const record of message.questions) {
-                        offset = DnsRecordSerializer.serialize(view, offset, record);
+                        offset = serializeRecord(record);
                     }
                 }
                 if (message.answers.length > 0) {
                     for (const record of message.answers) {
-                        offset = DnsRecordSerializer.serialize(view, offset, record);
+                        offset = serializeRecord(record);
                     }
                 }
                 if (message.authorities.length > 0) {
                     for (const record of message.authorities) {
-                        offset = DnsRecordSerializer.serialize(view, offset, record);
+                        offset = serializeRecord(record);
                     }
                 }
                 if (message.additionals.length > 0) {
                     for (const record of message.additionals) {
-                        offset = DnsRecordSerializer.serialize(view, offset, record);
+                        offset = serializeRecord(record);
                     }
                 }
                 break;
@@ -409,22 +438,22 @@ export class DnsSerializer {
                 offset += 2;
                 if (message.zones.length > 0) {
                     for (const record of message.zones) {
-                        offset = DnsRecordSerializer.serialize(view, offset, record);
+                        offset = serializeRecord(record);
                     }
                 }
                 if (message.prerequisites.length > 0) {
                     for (const record of message.prerequisites) {
-                        offset = DnsRecordSerializer.serialize(view, offset, record);
+                        offset = serializeRecord(record);
                     }
                 }
                 if (message.updates.length > 0) {
                     for (const record of message.updates) {
-                        offset = DnsRecordSerializer.serialize(view, offset, record);
+                        offset = serializeRecord(record);
                     }
                 }
                 if (message.additionals.length > 0) {
                     for (const record of message.additionals) {
-                        offset = DnsRecordSerializer.serialize(view, offset, record);
+                        offset = serializeRecord(record);
                     }
                 }
                 break;
@@ -769,11 +798,11 @@ export class DnsRecordSerializer {
                 throw new Error("Invalid IPv4 byte array length.");
             }
             const ipv4 = new Uint8Array(view.buffer.slice(offset, offset + dataLength)).join(".");
-            const data = [{key: "ipv4", value: ipv4}];
+            const data = { ipv4: ipv4 };
             return data;
         },
         serialize(rdata) {
-            const value = rdata.find(item => item.key === "ipv4").value;
+            const value = rdata.ipv4;
             const parts = value.split(".").map(Number);
             const buffer = new Uint8Array(parts);
             return buffer;
@@ -783,11 +812,11 @@ export class DnsRecordSerializer {
     static NS = {
         deserialize(view, offset) {
             const value = DnsNameSerializer.deserialize(view, offset);
-            const data = [{key: "name", value: value.name}];
+            const data = { name: value.name };
             return data;
         },
         serialize(rdata) {
-            const name = rdata.find(item => item.key === "name").value;
+            const name = rdata.name;
             const buffer = DnsNameSerializer.serialize(name);
             return buffer;
         }
@@ -796,11 +825,11 @@ export class DnsRecordSerializer {
     static MD = {
         deserialize(view, offset) {
             const value = DnsNameSerializer.deserialize(view, offset);
-            const data = [{key: "name", value: value.name}];
+            const data = { name: value.name };
             return data;
         },
         serialize(rdata) {
-            const name = rdata.find(item => item.key === "name").value;
+            const name = rdata.name;
             const buffer = DnsNameSerializer.serialize(name);
             return buffer;
         }
@@ -809,11 +838,11 @@ export class DnsRecordSerializer {
     static MF = {
         deserialize(view, offset) {
             const value = DnsNameSerializer.deserialize(view, offset);
-            const data = [{key: "name", value: value.name}];
+            const data = { name: value.name };
             return data;
         },
         serialize(rdata) {
-            const name = rdata.find(item => item.key === "name").value;
+            const name = rdata.name;
             const buffer = DnsNameSerializer.serialize(name);
             return buffer;
         }
@@ -822,11 +851,11 @@ export class DnsRecordSerializer {
     static CNAME = {
         deserialize(view, offset) {
             const value = DnsNameSerializer.deserialize(view, offset);
-            const data = [{key: "name", value: value.name}];
+            const data = { name: value.name };
             return data;
         },
         serialize(rdata) {
-            const name = rdata.find(item => item.key === "name").value;
+            const name = rdata.name;
             const buffer = DnsNameSerializer.serialize(name);
             return buffer;
         }
@@ -843,21 +872,13 @@ export class DnsRecordSerializer {
             const retry = view.getUint32(offset +  8);
             const expire = view.getUint32(offset + 12);
             const minimum = view.getUint32(offset + 16);
-            const data = [
-                {key: "mname", value: mname.name},
-                {key: "rname", value: rname.name},
-                {key: "serial", value: serial},
-                {key: "refresh", value: refresh},
-                {key: "retry", value: retry},
-                {key: "expire", value: expire},
-                {key: "minimum", value: minimum}
-            ];
+            const data = { mname: mname.name, rname: rname.name, serial: serial, refresh: refresh, retry: retry, expire: expire, minimum: minimum };
             return data;
         },
         serialize(rdata) {
-            const mname = rdata.find(item => item.key === "mname").value;
+            const mname = rdata.mname;
             const mnameBytes = DnsNameSerializer.serialize(mname);
-            const rname = rdata.find(item => item.key === "rname").value;
+            const rname = rdata.rname;
             const rnameBytes = DnsNameSerializer.serialize(rname);
 
             const length = mnameBytes.length + rnameBytes.length + 20;
@@ -867,11 +888,11 @@ export class DnsRecordSerializer {
 
             mnameBytes.forEach((byte) => view.setUint8(offset++, byte));
             rnameBytes.forEach((byte) => view.setUint8(offset++, byte));
-            view.setUint32(offset +  0, rdata.find(item => item.key === "serial").value,  false);
-            view.setUint32(offset +  4, rdata.find(item => item.key === "refresh").value, false);
-            view.setUint32(offset +  8, rdata.find(item => item.key === "retry").value,   false);
-            view.setUint32(offset + 12, rdata.find(item => item.key === "expire").value,  false);
-            view.setUint32(offset + 16, rdata.find(item => item.key === "minimum").value, false);
+            view.setUint32(offset +  0, rdata.serial,  false);
+            view.setUint32(offset +  4, rdata.refresh, false);
+            view.setUint32(offset +  8, rdata.retry,   false);
+            view.setUint32(offset + 12, rdata.expire,  false);
+            view.setUint32(offset + 16, rdata.minimum, false);
             return new Uint8Array(buffer);
         }
     }
@@ -879,11 +900,11 @@ export class DnsRecordSerializer {
     static MB = {
         deserialize(view, offset) {
             const value = DnsNameSerializer.deserialize(view, offset);
-            const data = [{ key: "name", value: value.name }];
+            const data = { name: value.name };
             return data;
         },
         serialize(rdata) {
-            const name = rdata.find(item => item.key === "name").value;
+            const name = rdata.name;
             const buffer = DnsNameSerializer.serialize(name);
             return buffer;
         }
@@ -892,11 +913,11 @@ export class DnsRecordSerializer {
     static MG = {
         deserialize(view, offset) {
             const value = DnsNameSerializer.deserialize(view, offset);
-            const data = [{ key: "name", value: value.name }];
+            const data = { name: value.name };
             return data;
         },
         serialize(rdata) {
-            const name = rdata.find(item => item.key === "name").value;
+            const name = rdata.name;
             const buffer = DnsNameSerializer.serialize(name);
             return buffer;
         }
@@ -905,11 +926,11 @@ export class DnsRecordSerializer {
     static MR = {
         deserialize(view, offset) {
             const value = DnsNameSerializer.deserialize(view, offset);
-            const data = [{ key: "name", value: value.name }];
+            const data = { name: value.name };
             return data;
         },
         serialize(rdata) {
-            const name = rdata.find(item => item.key === "name").value;
+            const name = rdata.name;
             const buffer = DnsNameSerializer.serialize(name);
             return buffer;
         }
@@ -918,10 +939,10 @@ export class DnsRecordSerializer {
     static NULL = {
         deserialize(view, offset, dataLength) {
             const data = new Uint8Array(view.buffer.slice(offset, offset + dataLength));
-            return [{ key: "data", value: btoa(String.fromCharCode(...data)) }];
+            return { data: btoa(String.fromCharCode(...data)) };
         },
         serialize(rdata) {
-            const base64Data = rdata.find(item => item.key === "data").value;
+            const base64Data = rdata.data;
             const buffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
             return buffer;
         }
@@ -942,17 +963,13 @@ export class DnsRecordSerializer {
                 }
             }
 
-            const data = [
-                { key: "address", value: address },
-                { key: "protocol", value: protocol },
-                { key: "ports", value: ports }
-            ];
+            const data = { address: address, protocol: protocol, ports: ports };
             return data;
         },
         serialize(rdata) {
-            const address = rdata.find(item => item.key === "address").value;
-            const protocol = rdata.find(item => item.key === "protocol").value;
-            const ports = rdata.find(item => item.key === "ports").value;
+            const address = rdata.address;
+            const protocol = rdata.protocol;
+            const ports = rdata.ports;
 
             const addressBytes = address.split(".").map(Number);
             const maxPort = Math.max(...ports);
@@ -977,11 +994,11 @@ export class DnsRecordSerializer {
     static PTR = {
         deserialize(view, offset) {
             const value = DnsNameSerializer.deserialize(view, offset);
-            const data = [{ key: "name", value: value.name }];
+            const data = { name: value.name };
             return data;
         },
         serialize(rdata) {
-            const name = rdata.find(item => item.key === "name").value;
+            const name = rdata.name;
             const buffer = DnsNameSerializer.serialize(name);
             return buffer;
         }
@@ -992,15 +1009,12 @@ export class DnsRecordSerializer {
             const rmailbx = DnsNameSerializer.deserialize(view, offset);
             offset = rmailbx.offset;
             const emailbx = DnsNameSerializer.deserialize(view, offset);
-            const data = [
-                { key: "rmailbx", value: rmailbx.name },
-                { key: "emailbx", value: emailbx.name }
-            ];
+            const data = { rmailbx: rmailbx.name, emailbx: emailbx.name };
             return data;
         },
         serialize(rdata) {
-            const rmailbx = rdata.find(item => item.key === "rmailbx").value;
-            const emailbx = rdata.find(item => item.key === "emailbx").value;
+            const rmailbx = rdata.rmailbx;
+            const emailbx = rdata.emailbx;
             const rmailbxBytes = DnsNameSerializer.serialize(rmailbx);
             const emailbxBytes = DnsNameSerializer.serialize(emailbx);
 
@@ -1017,15 +1031,12 @@ export class DnsRecordSerializer {
             const mbox = DnsNameSerializer.deserialize(view, offset);
             offset = mbox.offset;
             const txt = DnsNameSerializer.deserialize(view, offset);
-            const data = [
-                { key: "mbox", value: mbox.name },
-                { key: "txt", value: txt.name }
-            ];
+            const data = { mbox: mbox.name, txt: txt.name };
             return data;
         },
         serialize(rdata) {
-            const mbox = rdata.find(item => item.key === "mbox").value;
-            const txt = rdata.find(item => item.key === "txt").value;
+            const mbox = rdata.mbox;
+            const txt = rdata.txt;
             const mboxBytes = DnsNameSerializer.serialize(mbox);
             const txtBytes = DnsNameSerializer.serialize(txt);
 
@@ -1041,15 +1052,12 @@ export class DnsRecordSerializer {
         deserialize(view, offset) {
             const subtype = view.getUint16(offset);
             const hostname = DnsNameSerializer.deserialize(view, offset + 2);
-            const data = [
-                { key: "subtype", value: subtype },
-                { key: "hostname", value: hostname.name }
-            ];
+            const data = { subtype: subtype, hostname: hostname.name };
             return data;
         },
         serialize(rdata) {
-            const subtype = rdata.find(item => item.key === "subtype").value;
-            const hostname = rdata.find(item => item.key === "hostname").value;
+            const subtype = rdata.subtype;
+            const hostname = rdata.hostname;
             const hostnameBytes = DnsNameSerializer.serialize(hostname);
 
             const length = hostnameBytes.length + 2;
@@ -1074,15 +1082,12 @@ export class DnsRecordSerializer {
             offset += 1;
             const os = new TextDecoder().decode(view.buffer.slice(offset, offset + osLength));
             offset += osLength;
-            const data   = [
-                {key: "cpu", value: cpu},
-                {key: "os", value: os}
-            ];
+            const data   = { cpu: cpu, os: os };
             return data;
         },
         serialize(rdata) {
-            const cpu = rdata.find(item => item.key === "cpu").value;
-            const os  = rdata.find(item => item.key === "os").value;
+            const cpu = rdata.cpu;
+            const os  = rdata.os;
             const cpuBytes = new TextEncoder().encode(cpu);
             const osBytes = new TextEncoder().encode(os);
 
@@ -1105,15 +1110,12 @@ export class DnsRecordSerializer {
         deserialize(view, offset) {
             const preference = view.getUint16(offset);
             const exchange = DnsNameSerializer.deserialize(view, offset + 2);
-            const data = [
-                {key: "preference", value: preference},
-                {key: "exchange", value: exchange.name}
-            ];
+            const data = { preference: preference, exchange: exchange.name };
             return data;
         },
         serialize(rdata) {
-            const preference = rdata.find(item => item.key === "preference").value;
-            const exchange = rdata.find(item => item.key === "exchange").value;
+            const preference = rdata.preference;
+            const exchange = rdata.exchange;
             const exchangeBytes = DnsNameSerializer.serialize(exchange);
 
             const length = exchangeBytes.length + 2;
@@ -1140,11 +1142,11 @@ export class DnsRecordSerializer {
                 parts.push(part.toString(16));
             }
             const ipv6 = parts.join(":").replace(/(^|:)0(:0)*(:|$)/, "$1::$3").replace(/:{3,4}/, "::");
-            const data = [{key: "ipv6", value: ipv6}];
+            const data = { ipv6: ipv6 };
             return data;
         },
         serialize(rdata) {
-            const value = rdata.find(item => item.key === "ipv6").value;
+            const value = rdata.ipv6;
             const parts = value.split(":");
             const expanded = [];
             let skipped = false;
@@ -1173,19 +1175,14 @@ export class DnsRecordSerializer {
             const weight = view.getUint16(offset + 2);
             const port = view.getUint16(offset + 4);
             const target = DnsNameSerializer.deserialize(view, offset + 6);
-            const data = [
-                {key: "priority", value: priority},
-                {key: "weight", value: weight},
-                {key: "port", value: port},
-                {key: "target", value: target.name},
-            ];
+            const data = { priority: priority, weight: weight, port: port, target: target.name };
             return data;
         },
         serialize(rdata) {
-            const priority = rdata.find(item => item.key === "priority").value;
-            const weight = rdata.find(item => item.key === "weight").value;
-            const port = rdata.find(item => item.key === "port").value;
-            const target = rdata.find(item => item.key === "target").value;
+            const priority = rdata.priority;
+            const weight = rdata.weight;
+            const port = rdata.port;
+            const target = rdata.target;
             const targetBytes = DnsNameSerializer.serialize(target);
 
             const length = targetBytes.length + 6;
@@ -1214,19 +1211,14 @@ export class DnsRecordSerializer {
             offset += 1;
             const digestBytes = new Uint8Array(view.buffer.slice(offset, offset + (dataLength - 4)));
             const digestBase64 = btoa(String.fromCharCode(...digestBytes));
-            const data = [
-                {key: "keyTag", value: keyTag},
-                {key: "algorithm", value: algorithm},
-                {key: "digestType", value: digestType},
-                {key: "digest", value: digestBase64},
-            ];
+            const data = { keyTag: keyTag, algorithm: algorithm, digestType: digestType, digest: digestBase64 };
             return data;
         },
         serialize(rdata) {
-            const keyTag = rdata.find(item => item.key === "keyTag").value;
-            const algorithm = rdata.find(item => item.key === "algorithm").value;
-            const digestType = rdata.find(item => item.key === "digestType").value;
-            const digestBase64 = rdata.find(item => item.key === "digest").value;
+            const keyTag = rdata.keyTag;
+            const algorithm = rdata.algorithm;
+            const digestType = rdata.digestType;
+            const digestBase64 = rdata.digest;
             const digestBytes = Uint8Array.from(atob(digestBase64), c => c.charCodeAt(0));
 
             const length = digestBytes.length + 4;
@@ -1249,11 +1241,11 @@ export class DnsRecordSerializer {
         deserialize(view, offset) {
             const length = view.getUint8(offset);
             const text = new TextDecoder().decode(view.buffer.slice(offset + 1, offset + 1 + length));
-            const data = [{key: "text", value: text}];
+            const data = { text: text };
             return data;
         },
         serialize(rdata) {
-            const text = rdata.find(item => item.key === "text").value;
+            const text = rdata.text;
             const textBytes = new TextEncoder().encode(text);
 
             const length = textBytes.length + 1;
@@ -1280,29 +1272,19 @@ export class DnsRecordSerializer {
             const signersName = DnsNameSerializer.deserialize(view, offset + 18);
             const buffer = view.buffer.slice(signersName.offset, offset + dataLength);
             const signature = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-            const data = [
-                {key: "typeCovered", value: typeCovered},
-                {key: "algorithm", value: algorithm},
-                {key: "labels", value: labels},
-                {key: "originalTtl", value: originalTtl},
-                {key: "expiration", value: new Date(expiration * 1000)},
-                {key: "inception", value: new Date(inception * 1000)},
-                {key: "keyTag", value: keyTag},
-                {key: "signersName", value: signersName.name},
-                {key: "signature", value: signature}
-            ];
+            const data = { typeCovered: typeCovered, algorithm: algorithm, labels: labels, originalTtl: originalTtl, expiration: new Date(expiration * 1000), inception: new Date(inception * 1000), keyTag: keyTag, signersName: signersName.name, signature: signature };
             return data;
         },
         serialize(rdata) {
-            const typeCovered = rdata.find(item => item.key === "typeCovered").value;
-            const algorithm = rdata.find(item => item.key === "algorithm").value;
-            const labels = rdata.find(item => item.key === "labels").value;
-            const originalTtl = rdata.find(item => item.key === "originalTtl").value;
-            const expiration = Math.floor(rdata.find(item => item.key === "expiration").value.getTime() / 1000);
-            const inception = Math.floor(rdata.find(item => item.key === "inception").value.getTime() / 1000);
-            const keyTag = rdata.find(item => item.key === "keyTag").value;
-            const signersName = rdata.find(item => item.key === "signersName").value;
-            const signature = rdata.find(item => item.key === "signature").value;
+            const typeCovered = rdata.typeCovered;
+            const algorithm = rdata.algorithm;
+            const labels = rdata.labels;
+            const originalTtl = rdata.originalTtl;
+            const expiration = Math.floor(rdata.expiration.getTime() / 1000);
+            const inception = Math.floor(rdata.inception.getTime() / 1000);
+            const keyTag = rdata.keyTag;
+            const signersName = rdata.signersName;
+            const signature = rdata.signature;
             const signersNameBytes = DnsNameSerializer.serialize(signersName);
             const signatureBytes = atob(signature).split("").map(c => c.charCodeAt(0));
 
@@ -1351,11 +1333,55 @@ export class DnsRecordSerializer {
                     }
                 }
             }
-            const data = [
-                {key: "nextDomain", value: nextDomain.name},
-                {key: "typeBitmaps", value: typeBitmaps}
-            ];
+            const data = { nextDomain: nextDomain.name, typeBitmaps: typeBitmaps };
             return data;
+        },
+        serialize(rdata) {
+            const nextDomain = rdata.nextDomain;
+            const typeBitmaps = rdata?.typeBitmaps || [];
+            const nextDomainBytes = DnsNameSerializer.serialize(nextDomain);
+
+            // Resolve type names back to numeric RR types.
+            const TYPE_BY_NAME = {};
+            for (const [num, name] of Object.entries(TYPE_NAMES)) TYPE_BY_NAME[name] = Number(num);
+            const rrTypes = typeBitmaps
+                .map(t => (typeof t === "number" ? t : TYPE_BY_NAME[t]))
+                .filter(t => typeof t === "number");
+
+            // Group by window block (high byte of the type code).
+            const blocks = new Map();
+            for (const t of rrTypes) {
+                const block = (t >> 8) & 0xff;
+                const lo = t & 0xff;
+                if (!blocks.has(block)) blocks.set(block, []);
+                blocks.get(block).push(lo);
+            }
+
+            const sortedBlocks = [...blocks.entries()].sort((a, b) => a[0] - b[0]);
+            const blockBuffers = [];
+            for (const [block, lows] of sortedBlocks) {
+                const maxLow = Math.max(...lows);
+                const len = Math.floor(maxLow / 8) + 1;
+                const bm = new Uint8Array(len);
+                for (const lo of lows) {
+                    bm[lo >> 3] |= 1 << (7 - (lo & 7));
+                }
+                blockBuffers.push({ block, bm });
+            }
+
+            let totalBitmap = 0;
+            for (const b of blockBuffers) totalBitmap += 2 + b.bm.length;
+
+            const out = new Uint8Array(nextDomainBytes.length + totalBitmap);
+            out.set(nextDomainBytes, 0);
+            let off = nextDomainBytes.length;
+            for (const b of blockBuffers) {
+                out[off++] = b.block;
+                out[off++] = b.bm.length;
+                out.set(b.bm, off);
+                off += b.bm.length;
+            }
+            return out;
         }
     }
     
@@ -1379,19 +1405,14 @@ export class DnsRecordSerializer {
             offset += 1;
             const publicKeyBytes = new Uint8Array(view.buffer.slice(offset, offset + (dataLength - 4)));
             const publicKeyBase64 = btoa(String.fromCharCode(...publicKeyBytes));
-            const data = [
-                {key: "flag", value: flag},
-                {key: "protocol", value: protocol},
-                {key: "algorithm", value: algorithm},
-                {key: "publickey", value: publicKeyBase64}
-            ];
+            const data = { flag: flag, protocol: protocol, algorithm: algorithm, publickey: publicKeyBase64 };
             return data;
         },
         serialize(rdata) {
-            const flag = rdata.find(item => item.key === "flag").value === "ZSK" ? 256 : 257;
-            const protocol = rdata.find(item => item.key === "protocol").value;
-            const algorithm = rdata.find(item => item.key === "algorithm").value;
-            const publicKeyBase64 = rdata.find(item => item.key === "publickey").value;
+            const flag = rdata.flag === "ZSK" ? 256 : 257;
+            const protocol = rdata.protocol;
+            const algorithm = rdata.algorithm;
+            const publicKeyBase64 = rdata.publickey;
             const publicKeyBytes = new Uint8Array(atob(publicKeyBase64).split("").map(char => char.charCodeAt(0)));
 
             const length = publicKeyBytes.length + 4;
@@ -1412,11 +1433,10 @@ export class DnsRecordSerializer {
 
     static TSIG = {
         deserialize(view, offset) {
-            let start = offset;
             let rdata = {};
             const algorithm = DnsNameSerializer.deserialize(view, offset);
             rdata.algorithm = algorithm.name;
-            start = algorithm.offset;
+            let start = algorithm.offset;
             const timestampHigh = view.getUint16(start);
             const timestampLow  = view.getUint32(start + 2);
             rdata.timestamp = (BigInt(timestampHigh) << 32n) | BigInt(timestampLow);
@@ -1441,13 +1461,11 @@ export class DnsRecordSerializer {
             const algorithmBytes = DnsNameSerializer.serialize(rdata.algorithm);
             const timestampHigh = Number((rdata.timestamp >> 32n) & 0xFFFFn);
             const timestampLow = Number(rdata.timestamp & 0xFFFFFFFFn);
-            let length = algorithmBytes.length + rdata.mac.byteLength + rdata.otherData.byteLength;
 
-            if (rdata.mac.byteLength > 0) {
-                length += 16;
-            } else {
-                length += 14;
-            }
+            // RFC 8945: layout is algorithm + 6 (time) + 2 (fudge) + 2 (maclen)
+            // + mac + 2 (originalId) + 2 (error) + 2 (otherLen) + otherData.
+            // The mac-length field MUST always be present (zero if empty).
+            const length = algorithmBytes.length + 16 + rdata.mac.byteLength + rdata.otherData.byteLength;
 
             const buffer = new ArrayBuffer(length);
             const view = new DataView(buffer);
@@ -1460,12 +1478,10 @@ export class DnsRecordSerializer {
             offset += 4;
             view.setUint16(offset, rdata.fudge);
             offset += 2;
-            
-            if (rdata.mac.byteLength > 0) {
-                view.setUint16(offset, rdata.mac.byteLength);
-                offset += 2;
-                rdata.mac.forEach((byte) => view.setUint8(offset++, byte));
-            }
+
+            view.setUint16(offset, rdata.mac.byteLength);
+            offset += 2;
+            rdata.mac.forEach((byte) => view.setUint8(offset++, byte));
 
             view.setUint16(offset, rdata.originalId);
             offset += 2;
@@ -1491,15 +1507,7 @@ export class DnsRecordSerializer {
             const longitude = view.getUint32(offset + 8);
             const altitude = view.getUint32(offset + 12);
             
-            const data = [
-                {key: "version", value: version},
-                {key: "size", value: size},
-                {key: "horizPre", value: horizPre},
-                {key: "vertPre", value: vertPre},
-                {key: "latitude", value: latitude},
-                {key: "longitude", value: longitude},
-                {key: "altitude", value: altitude}
-            ];
+            const data = { version: version, size: size, horizPre: horizPre, vertPre: vertPre, latitude: latitude, longitude: longitude, altitude: altitude };
             return data;
         },
         serialize(rdata) {
@@ -1507,19 +1515,19 @@ export class DnsRecordSerializer {
             const view = new DataView(buffer);
             let offset = 0;
 
-            view.setUint8(offset, rdata.find(item => item.key === "version").value);
+            view.setUint8(offset, rdata.version);
             offset++;
-            view.setUint8(offset, rdata.find(item => item.key === "size").value);
+            view.setUint8(offset, rdata.size);
             offset++;
-            view.setUint8(offset, rdata.find(item => item.key === "horizPre").value);
+            view.setUint8(offset, rdata.horizPre);
             offset++;
-            view.setUint8(offset, rdata.find(item => item.key === "vertPre").value);
+            view.setUint8(offset, rdata.vertPre);
             offset++;
-            view.setUint32(offset, rdata.find(item => item.key === "latitude").value, false);
+            view.setUint32(offset, rdata.latitude, false);
             offset += 4;
-            view.setUint32(offset, rdata.find(item => item.key === "longitude").value, false);
+            view.setUint32(offset, rdata.longitude, false);
             offset += 4;
-            view.setUint32(offset, rdata.find(item => item.key === "altitude").value, false);
+            view.setUint32(offset, rdata.altitude, false);
             
             return new Uint8Array(buffer);
         }
@@ -1545,23 +1553,16 @@ export class DnsRecordSerializer {
             
             const replacement = DnsNameSerializer.deserialize(view, offset);
             
-            const data = [
-                {key: "order", value: order},
-                {key: "preference", value: preference},
-                {key: "flags", value: flags},
-                {key: "services", value: services},
-                {key: "regexp", value: regexp},
-                {key: "replacement", value: replacement.name}
-            ];
+            const data = { order: order, preference: preference, flags: flags, services: services, regexp: regexp, replacement: replacement.name };
             return data;
         },
         serialize(rdata) {
-            const order = rdata.find(item => item.key === "order").value;
-            const preference = rdata.find(item => item.key === "preference").value;
-            const flags = rdata.find(item => item.key === "flags").value;
-            const services = rdata.find(item => item.key === "services").value;
-            const regexp = rdata.find(item => item.key === "regexp").value;
-            const replacement = rdata.find(item => item.key === "replacement").value;
+            const order = rdata.order;
+            const preference = rdata.preference;
+            const flags = rdata.flags;
+            const services = rdata.services;
+            const regexp = rdata.regexp;
+            const replacement = rdata.replacement;
             
             const flagsBytes = new TextEncoder().encode(flags);
             const servicesBytes = new TextEncoder().encode(services);
@@ -1600,19 +1601,14 @@ export class DnsRecordSerializer {
             const certificate = new Uint8Array(view.buffer.slice(offset + 5, offset + dataLength));
             const certificateBase64 = btoa(String.fromCharCode(...certificate));
             
-            const data = [
-                {key: "type", value: type},
-                {key: "keyTag", value: keyTag},
-                {key: "algorithm", value: algorithm},
-                {key: "certificate", value: certificateBase64}
-            ];
+            const data = { type: type, keyTag: keyTag, algorithm: algorithm, certificate: certificateBase64 };
             return data;
         },
         serialize(rdata) {
-            const type = rdata.find(item => item.key === "type").value;
-            const keyTag = rdata.find(item => item.key === "keyTag").value;
-            const algorithm = rdata.find(item => item.key === "algorithm").value;
-            const certificateBase64 = rdata.find(item => item.key === "certificate").value;
+            const type = rdata.type;
+            const keyTag = rdata.keyTag;
+            const algorithm = rdata.algorithm;
+            const certificateBase64 = rdata.certificate;
             const certificateBytes = Uint8Array.from(atob(certificateBase64), c => c.charCodeAt(0));
             
             const length = certificateBytes.length + 5;
@@ -1635,11 +1631,11 @@ export class DnsRecordSerializer {
     static DNAME = {
         deserialize(view, offset) {
             const value = DnsNameSerializer.deserialize(view, offset);
-            const data = [{key: "name", value: value.name}];
+            const data = { name: value.name };
             return data;
         },
         serialize(rdata) {
-            const name = rdata.find(item => item.key === "name").value;
+            const name = rdata.name;
             const buffer = DnsNameSerializer.serialize(name);
             return buffer;
         }
@@ -1652,17 +1648,13 @@ export class DnsRecordSerializer {
             const fingerprint = new Uint8Array(view.buffer.slice(offset + 2, offset + dataLength));
             const fingerprintHex = Array.from(fingerprint).map(b => b.toString(16).padStart(2, '0')).join('');
             
-            const data = [
-                {key: "algorithm", value: algorithm},
-                {key: "fpType", value: fpType},
-                {key: "fingerprint", value: fingerprintHex}
-            ];
+            const data = { algorithm: algorithm, fpType: fpType, fingerprint: fingerprintHex };
             return data;
         },
         serialize(rdata) {
-            const algorithm = rdata.find(item => item.key === "algorithm").value;
-            const fpType = rdata.find(item => item.key === "fpType").value;
-            const fingerprintHex = rdata.find(item => item.key === "fingerprint").value;
+            const algorithm = rdata.algorithm;
+            const fpType = rdata.fpType;
+            const fingerprintHex = rdata.fingerprint;
             const fingerprintBytes = new Uint8Array(fingerprintHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
             
             const buffer = new Uint8Array(2 + fingerprintBytes.length);
@@ -1682,19 +1674,14 @@ export class DnsRecordSerializer {
             const certAssocData = new Uint8Array(view.buffer.slice(offset + 3, offset + dataLength));
             const certAssocDataHex = Array.from(certAssocData).map(b => b.toString(16).padStart(2, '0')).join('');
             
-            const data = [
-                {key: "usage", value: usage},
-                {key: "selector", value: selector},
-                {key: "matchingType", value: matchingType},
-                {key: "certAssocData", value: certAssocDataHex}
-            ];
+            const data = { usage: usage, selector: selector, matchingType: matchingType, certAssocData: certAssocDataHex };
             return data;
         },
         serialize(rdata) {
-            const usage = rdata.find(item => item.key === "usage").value;
-            const selector = rdata.find(item => item.key === "selector").value;
-            const matchingType = rdata.find(item => item.key === "matchingType").value;
-            const certAssocDataHex = rdata.find(item => item.key === "certAssocData").value;
+            const usage = rdata.usage;
+            const selector = rdata.selector;
+            const matchingType = rdata.matchingType;
+            const certAssocDataHex = rdata.certAssocData;
             const certAssocDataBytes = new Uint8Array(certAssocDataHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
             
             const buffer = new Uint8Array(3 + certAssocDataBytes.length);
@@ -1711,11 +1698,11 @@ export class DnsRecordSerializer {
         deserialize(view, offset) {
             const length = view.getUint8(offset);
             const text = new TextDecoder().decode(view.buffer.slice(offset + 1, offset + 1 + length));
-            const data = [{key: "text", value: text}];
+            const data = { text: text };
             return data;
         },
         serialize(rdata) {
-            const text = rdata.find(item => item.key === "text").value;
+            const text = rdata.text;
             const textBytes = new TextEncoder().encode(text);
 
             const length = textBytes.length + 1;
@@ -1736,17 +1723,13 @@ export class DnsRecordSerializer {
             const weight = view.getUint16(offset + 2);
             const target = new TextDecoder().decode(view.buffer.slice(offset + 4, offset + dataLength));
             
-            const data = [
-                {key: "priority", value: priority},
-                {key: "weight", value: weight},
-                {key: "target", value: target}
-            ];
+            const data = { priority: priority, weight: weight, target: target };
             return data;
         },
         serialize(rdata) {
-            const priority = rdata.find(item => item.key === "priority").value;
-            const weight = rdata.find(item => item.key === "weight").value;
-            const target = rdata.find(item => item.key === "target").value;
+            const priority = rdata.priority;
+            const weight = rdata.weight;
+            const target = rdata.target;
             const targetBytes = new TextEncoder().encode(target);
             
             const length = targetBytes.length + 4;
@@ -1771,17 +1754,13 @@ export class DnsRecordSerializer {
             const tag = new TextDecoder().decode(view.buffer.slice(offset + 2, offset + 2 + tagLength));
             const value = new TextDecoder().decode(view.buffer.slice(offset + 2 + tagLength, offset + dataLength));
             
-            const data = [
-                {key: "flags", value: flags},
-                {key: "tag", value: tag},
-                {key: "value", value: value}
-            ];
+            const data = { flags: flags, tag: tag, value: value };
             return data;
         },
         serialize(rdata) {
-            const flags = rdata.find(item => item.key === "flags").value;
-            const tag = rdata.find(item => item.key === "tag").value;
-            const value = rdata.find(item => item.key === "value").value;
+            const flags = rdata.flags;
+            const tag = rdata.tag;
+            const value = rdata.value;
             
             const tagBytes = new TextEncoder().encode(tag);
             const valueBytes = new TextEncoder().encode(value);
@@ -1805,7 +1784,7 @@ export class DnsRecordSerializer {
             const target = DnsNameSerializer.deserialize(view, offset);
             offset = target.offset;
             
-            const params = [];
+            const params = {};
             const maxOffset = startOffset + dataLength;
             
             while (offset < maxOffset) {
@@ -1827,34 +1806,24 @@ export class DnsRecordSerializer {
                     offset += paramLength;
                 }
                 
-                params.push({
-                    key: paramKey,
-                    value: paramValue
-                });
+                params[paramKey] = paramValue;
             }
             
-            const data = [
-                {key: "priority", value: priority},
-                {key: "target", value: target.name},
-                {key: "params", value: params}
-            ];
-            return data;
+            return { priority, target: target.name, params };
         },
         serialize(rdata) {
-            const priority = rdata.find(item => item.key === "priority").value;
-            const target = rdata.find(item => item.key === "target").value;
-            const params = rdata.find(item => item.key === "params")?.value || [];
+            const priority = rdata.priority;
+            const target = rdata.target;
+            const params = rdata.params || {};
             
             const targetBytes = DnsNameSerializer.serialize(target);
             
-            let paramsSize = 0;
-            const paramBuffers = [];
-            
-            for (const param of params) {
-                const paramBytes = param.value ? new Uint8Array(param.value.match(/.{2}/g)?.map(byte => parseInt(byte, 16)) || []) : new Uint8Array(0);
-                paramBuffers.push(paramBytes);
-                paramsSize += 4 + paramBytes.length;
-            }
+            const paramKeys = Object.keys(params).map(Number).sort((a, b) => a - b);
+            const paramBuffers = paramKeys.map(k => {
+                const v = params[k];
+                return v ? new Uint8Array(v.match(/.{2}/g)?.map(byte => parseInt(byte, 16)) || []) : new Uint8Array(0);
+            });
+            const paramsSize = paramBuffers.reduce((sum, b) => sum + 4 + b.length, 0);
             
             const length = 2 + targetBytes.length + paramsSize;
             const buffer = new ArrayBuffer(length);
@@ -1866,8 +1835,8 @@ export class DnsRecordSerializer {
             
             targetBytes.forEach((byte) => view.setUint8(offset++, byte));
             
-            for (let i = 0; i < params.length; i++) {
-                view.setUint16(offset, params[i].key, false);
+            for (let i = 0; i < paramKeys.length; i++) {
+                view.setUint16(offset, paramKeys[i], false);
                 offset += 2;
                 view.setUint16(offset, paramBuffers[i].length, false);
                 offset += 2;
@@ -1887,7 +1856,7 @@ export class DnsRecordSerializer {
             const target = DnsNameSerializer.deserialize(view, offset);
             offset = target.offset;
             
-            const params = [];
+            const params = {};
             const maxOffset = startOffset + dataLength;
             
             while (offset < maxOffset) {
@@ -1909,34 +1878,24 @@ export class DnsRecordSerializer {
                     offset += paramLength;
                 }
                 
-                params.push({
-                    key: paramKey,
-                    value: paramValue
-                });
+                params[paramKey] = paramValue;
             }
             
-            const data = [
-                {key: "priority", value: priority},
-                {key: "target", value: target.name},
-                {key: "params", value: params}
-            ];
-            return data;
+            return { priority, target: target.name, params };
         },
         serialize(rdata) {
-            const priority = rdata.find(item => item.key === "priority").value;
-            const target = rdata.find(item => item.key === "target").value;
-            const params = rdata.find(item => item.key === "params")?.value || [];
+            const priority = rdata.priority;
+            const target = rdata.target;
+            const params = rdata.params || {};
             
             const targetBytes = DnsNameSerializer.serialize(target);
             
-            let paramsSize = 0;
-            const paramBuffers = [];
-            
-            for (const param of params) {
-                const paramBytes = param.value ? new Uint8Array(param.value.match(/.{2}/g)?.map(byte => parseInt(byte, 16)) || []) : new Uint8Array(0);
-                paramBuffers.push(paramBytes);
-                paramsSize += 4 + paramBytes.length;
-            }
+            const paramKeys = Object.keys(params).map(Number).sort((a, b) => a - b);
+            const paramBuffers = paramKeys.map(k => {
+                const v = params[k];
+                return v ? new Uint8Array(v.match(/.{2}/g)?.map(byte => parseInt(byte, 16)) || []) : new Uint8Array(0);
+            });
+            const paramsSize = paramBuffers.reduce((sum, b) => sum + 4 + b.length, 0);
             
             const length = 2 + targetBytes.length + paramsSize;
             const buffer = new ArrayBuffer(length);
@@ -1948,8 +1907,8 @@ export class DnsRecordSerializer {
             
             targetBytes.forEach((byte) => view.setUint8(offset++, byte));
             
-            for (let i = 0; i < params.length; i++) {
-                view.setUint16(offset, params[i].key, false);
+            for (let i = 0; i < paramKeys.length; i++) {
+                view.setUint16(offset, paramKeys[i], false);
                 offset += 2;
                 view.setUint16(offset, paramBuffers[i].length, false);
                 offset += 2;
@@ -1965,13 +1924,11 @@ export class DnsRecordSerializer {
             const keyData = new Uint8Array(view.buffer.slice(offset, offset + dataLength));
             const keyBase64 = btoa(String.fromCharCode(...keyData));
             
-            const data = [
-                {key: "publickey", value: keyBase64}
-            ];
+            const data = { publickey: keyBase64 };
             return data;
         },
         serialize(rdata) {
-            const publicKeyBase64 = rdata.find(item => item.key === "publickey").value;
+            const publicKeyBase64 = rdata.publickey;
             const publicKeyBytes = Uint8Array.from(atob(publicKeyBase64), c => c.charCodeAt(0));
             return publicKeyBytes;
         }
@@ -1985,19 +1942,14 @@ export class DnsRecordSerializer {
             const certAssocData = new Uint8Array(view.buffer.slice(offset + 3, offset + dataLength));
             const certAssocDataHex = Array.from(certAssocData).map(b => b.toString(16).padStart(2, '0')).join('');
 
-            const data = [
-                { key: "usage", value: usage },
-                { key: "selector", value: selector },
-                { key: "matchingType", value: matchingType },
-                { key: "certAssocData", value: certAssocDataHex }
-            ];
+            const data = { usage: usage, selector: selector, matchingType: matchingType, certAssocData: certAssocDataHex };
             return data;
         },
         serialize(rdata) {
-            const usage = rdata.find(item => item.key === "usage").value;
-            const selector = rdata.find(item => item.key === "selector").value;
-            const matchingType = rdata.find(item => item.key === "matchingType").value;
-            const certAssocDataHex = rdata.find(item => item.key === "certAssocData").value;
+            const usage = rdata.usage;
+            const selector = rdata.selector;
+            const matchingType = rdata.matchingType;
+            const certAssocDataHex = rdata.certAssocData;
             const certAssocDataBytes = new Uint8Array(certAssocDataHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
 
             const buffer = new Uint8Array(3 + certAssocDataBytes.length);
@@ -2054,21 +2006,15 @@ export class DnsRecordSerializer {
             const publicKeyBytes = new Uint8Array(view.buffer.slice(offset, offset + publicKeyLength));
             const publicKeyBase64 = btoa(String.fromCharCode(...publicKeyBytes));
 
-            const data = [
-                { key: "precedence", value: precedence },
-                { key: "gatewayType", value: gatewayType },
-                { key: "algorithm", value: algorithm },
-                { key: "gateway", value: gateway },
-                { key: "publickey", value: publicKeyBase64 }
-            ];
+            const data = { precedence: precedence, gatewayType: gatewayType, algorithm: algorithm, gateway: gateway, publickey: publicKeyBase64 };
             return data;
         },
         serialize(rdata) {
-            const precedence = rdata.find(item => item.key === "precedence").value;
-            const gatewayType = rdata.find(item => item.key === "gatewayType").value;
-            const algorithm = rdata.find(item => item.key === "algorithm").value;
-            const gateway = rdata.find(item => item.key === "gateway").value;
-            const publicKeyBase64 = rdata.find(item => item.key === "publickey").value;
+            const precedence = rdata.precedence;
+            const gatewayType = rdata.gatewayType;
+            const algorithm = rdata.algorithm;
+            const gateway = rdata.gateway;
+            const publicKeyBase64 = rdata.publickey;
 
             let gatewayBytes;
             switch (gatewayType) {
@@ -2130,13 +2076,11 @@ export class DnsRecordSerializer {
             const dhcidData = new Uint8Array(view.buffer.slice(offset, offset + dataLength));
             const dhcidBase64 = btoa(String.fromCharCode(...dhcidData));
 
-            const data = [
-                { key: "digest", value: dhcidBase64 }
-            ];
+            const data = { digest: dhcidBase64 };
             return data;
         },
         serialize(rdata) {
-            const digestBase64 = rdata.find(item => item.key === "digest").value;
+            const digestBase64 = rdata.digest;
             const digestBytes = Uint8Array.from(atob(digestBase64), c => c.charCodeAt(0));
             return digestBytes;
         }
@@ -2184,23 +2128,16 @@ export class DnsRecordSerializer {
                 }
             }
 
-            const data = [
-                { key: "algorithm", value: algorithm },
-                { key: "flags", value: flags },
-                { key: "iterations", value: iterations },
-                { key: "salt", value: salt },
-                { key: "nextHashedOwnerName", value: nextHashedOwnerName },
-                { key: "typeBitmaps", value: typeBitmaps }
-            ];
+            const data = { algorithm: algorithm, flags: flags, iterations: iterations, salt: salt, nextHashedOwnerName: nextHashedOwnerName, typeBitmaps: typeBitmaps };
             return data;
         },
         serialize(rdata) {
-            const algorithm = rdata.find(item => item.key === "algorithm").value;
-            const flags = rdata.find(item => item.key === "flags").value;
-            const iterations = rdata.find(item => item.key === "iterations").value;
-            const salt = rdata.find(item => item.key === "salt").value;
-            const nextHashedOwnerName = rdata.find(item => item.key === "nextHashedOwnerName").value;
-            const typeBitmaps = rdata.find(item => item.key === "typeBitmaps")?.value || [];
+            const algorithm = rdata.algorithm;
+            const flags = rdata.flags;
+            const iterations = rdata.iterations;
+            const salt = rdata.salt;
+            const nextHashedOwnerName = rdata.nextHashedOwnerName;
+            const typeBitmaps = rdata?.typeBitmaps || [];
 
             const saltBytes = salt ? new Uint8Array(salt.match(/.{2}/g)?.map(byte => parseInt(byte, 16)) || []) : new Uint8Array(0);
             const hashBytes = new Uint8Array(nextHashedOwnerName.match(/.{2}/g)?.map(byte => parseInt(byte, 16)) || []);
@@ -2249,18 +2186,13 @@ export class DnsRecordSerializer {
             const saltLength = view.getUint8(offset + 4);
             const salt = saltLength > 0 ? Array.from(new Uint8Array(view.buffer.slice(offset + 5, offset + 5 + saltLength))).map(b => b.toString(16).padStart(2, '0')).join('') : "";
 
-            return [
-                { key: "algorithm", value: algorithm },
-                { key: "flags", value: flags },
-                { key: "iterations", value: iterations },
-                { key: "salt", value: salt }
-            ];
+            return { algorithm: algorithm, flags: flags, iterations: iterations, salt: salt };
         },
         serialize(rdata) {
-            const algorithm = rdata.find(item => item.key === "algorithm").value;
-            const flags = rdata.find(item => item.key === "flags").value;
-            const iterations = rdata.find(item => item.key === "iterations").value;
-            const salt = rdata.find(item => item.key === "salt").value;
+            const algorithm = rdata.algorithm;
+            const flags = rdata.flags;
+            const iterations = rdata.iterations;
+            const salt = rdata.salt;
             const saltBytes = salt ? new Uint8Array(salt.match(/.{2}/g).map(byte => parseInt(byte, 16))) : new Uint8Array(0);
 
             const buffer = new ArrayBuffer(5 + saltBytes.length);
@@ -2287,15 +2219,11 @@ export class DnsRecordSerializer {
             const flags = view.getUint16(offset + 4);
             const typeBitmaps = []; // Vereinfacht
 
-            return [
-                { key: "serial", value: serial },
-                { key: "flags", value: flags },
-                { key: "typeBitmaps", value: typeBitmaps }
-            ];
+            return { serial: serial, flags: flags, typeBitmaps: typeBitmaps };
         },
         serialize(rdata) {
-            const serial = rdata.find(item => item.key === "serial").value;
-            const flags = rdata.find(item => item.key === "flags").value;
+            const serial = rdata.serial;
+            const flags = rdata.flags;
 
             const buffer = new ArrayBuffer(6);
             const view = new DataView(buffer);
@@ -2314,18 +2242,13 @@ export class DnsRecordSerializer {
             const algorithm = view.getUint8(offset + 5);
             const digest = Array.from(new Uint8Array(view.buffer.slice(offset + 6, offset + dataLength))).map(b => b.toString(16).padStart(2, '0')).join('');
 
-            return [
-                { key: "serial", value: serial },
-                { key: "scheme", value: scheme },
-                { key: "algorithm", value: algorithm },
-                { key: "digest", value: digest }
-            ];
+            return { serial: serial, scheme: scheme, algorithm: algorithm, digest: digest };
         },
         serialize(rdata) {
-            const serial = rdata.find(item => item.key === "serial").value;
-            const scheme = rdata.find(item => item.key === "scheme").value;
-            const algorithm = rdata.find(item => item.key === "algorithm").value;
-            const digest = rdata.find(item => item.key === "digest").value;
+            const serial = rdata.serial;
+            const scheme = rdata.scheme;
+            const algorithm = rdata.algorithm;
+            const digest = rdata.digest;
             const digestBytes = new Uint8Array(digest.match(/.{2}/g).map(byte => parseInt(byte, 16)));
 
             const buffer = new ArrayBuffer(6 + digestBytes.length);
@@ -2357,24 +2280,16 @@ export class DnsRecordSerializer {
             const otherLength = view.getUint16(offset + 14 + keyLength);
             const other = otherLength > 0 ? btoa(String.fromCharCode(...new Uint8Array(view.buffer.slice(offset + 16 + keyLength, offset + 16 + keyLength + otherLength)))) : "";
 
-            return [
-                { key: "algorithm", value: algorithm.name },
-                { key: "inception", value: new Date(inception * 1000) },
-                { key: "expiration", value: new Date(expiration * 1000) },
-                { key: "mode", value: mode },
-                { key: "error", value: error },
-                { key: "key", value: key },
-                { key: "other", value: other }
-            ];
+            return { algorithm: algorithm.name, inception: new Date(inception * 1000), expiration: new Date(expiration * 1000), mode: mode, error: error, key: key, other: other };
         },
         serialize(rdata) {
-            const algorithm = rdata.find(item => item.key === "algorithm").value;
-            const inception = Math.floor(rdata.find(item => item.key === "inception").value.getTime() / 1000);
-            const expiration = Math.floor(rdata.find(item => item.key === "expiration").value.getTime() / 1000);
-            const mode = rdata.find(item => item.key === "mode").value;
-            const error = rdata.find(item => item.key === "error").value;
-            const key = rdata.find(item => item.key === "key").value;
-            const other = rdata.find(item => item.key === "other").value;
+            const algorithm = rdata.algorithm;
+            const inception = Math.floor(rdata.inception.getTime() / 1000);
+            const expiration = Math.floor(rdata.expiration.getTime() / 1000);
+            const mode = rdata.mode;
+            const error = rdata.error;
+            const key = rdata.key;
+            const other = rdata.other;
 
             const algorithmBytes = DnsNameSerializer.serialize(algorithm);
             const keyBytes = key ? Uint8Array.from(atob(key), c => c.charCodeAt(0)) : new Uint8Array(0);
@@ -2544,7 +2459,7 @@ export function interpret(message) {
 }
 
 export async function query(url, message, interpreted = false) {
-    let result = "";
+    let result;
     const query = DnsSerializer.serialize(message);
     const start = performance.now();
     const response = await fetch(url, {
@@ -2566,4 +2481,297 @@ export async function query(url, message, interpreted = false) {
         result = interpret(result);
     }
     return {result, latency};
+}
+
+// ---------------------------------------------------------------------------
+// High-level convenience API
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolves a DNS type name (e.g. "A", "AAAA", "MX") or numeric code to a
+ * numeric TYPE value. Throws on unknown names.
+ */
+function resolveTypeCode(type) {
+    if (typeof type === "number") return type;
+    if (typeof type === "string") {
+        const code = TYPE[type.toUpperCase()];
+        if (code === undefined) {
+            throw new Error(`Unknown DNS record type: ${type}`);
+        }
+        return code;
+    }
+    throw new TypeError("Type must be a string or a number.");
+}
+
+function resolveClassCode(clazz) {
+    if (typeof clazz === "number") return clazz;
+    if (typeof clazz === "string") {
+        const code = CLAZZ[clazz.toUpperCase()];
+        if (code === undefined) {
+            throw new Error(`Unknown DNS class: ${clazz}`);
+        }
+        return code;
+    }
+    throw new TypeError("Class must be a string or a number.");
+}
+
+/**
+ * Returns a user-friendly view of a single record. The internal record is not
+ * mutated.
+ */
+function recordToObject(record) {
+    return {
+        name: record.name,
+        type: TYPE_NAMES[record.type] ?? record.type,
+        class: CLASS_NAMES[record.clazz] ?? record.clazz,
+        ttl: record.ttl,
+        data: record.data
+    };
+}
+
+function questionToObject(question) {
+    return {
+        name: question.name,
+        type: TYPE_NAMES[question.type] ?? question.type,
+        class: CLASS_NAMES[question.clazz] ?? question.clazz
+    };
+}
+
+/**
+ * Builds the reverse-DNS name (.in-addr.arpa / .ip6.arpa) for an IPv4 or IPv6
+ * address.
+ */
+function buildReverseName(ip) {
+    if (typeof ip !== "string" || ip.length === 0) {
+        throw new TypeError("ip must be a non-empty string.");
+    }
+    if (ip.includes(":")) {
+        // IPv6 - expand and reverse nibbles.
+        const parts = ip.split(":");
+        const expanded = [];
+        let skipped = false;
+        for (const part of parts) {
+            if (part === "" && !skipped) {
+                expanded.push(...Array(8 - parts.length + 1).fill("0"));
+                skipped = true;
+            } else if (part !== "") {
+                expanded.push(part);
+            }
+        }
+        // Pad each group to 4 hex digits.
+        const hex = expanded.map(p => p.padStart(4, "0")).join("");
+        if (hex.length !== 32) {
+            throw new Error(`Invalid IPv6 address: ${ip}`);
+        }
+        return hex.split("").reverse().join(".") + ".ip6.arpa";
+    }
+    // IPv4
+    const octets = ip.split(".");
+    if (octets.length !== 4 || octets.some(o => !/^\d+$/.test(o) || Number(o) > 255)) {
+        throw new Error(`Invalid IPv4 address: ${ip}`);
+    }
+    return octets.slice().reverse().join(".") + ".in-addr.arpa";
+}
+
+/**
+ * Fluent builder for RFC 2136 dynamic DNS UPDATE messages.
+ *
+ * Obtain an instance via `client.update(zone)`. After populating it with
+ * `add`, `delete`, `replace`, `requirePresent` or `requireAbsent` calls send
+ * it via `await builder.send()` (optionally signed with TSIG).
+ */
+export class UpdateBuilder {
+    constructor(client, zone) {
+        if (!zone || typeof zone !== "string") {
+            throw new TypeError("Zone must be a non-empty string.");
+        }
+        this._client = client;
+        this._message = new UpdateMessage();
+        this._message.zones.push(new Zone(zone, TYPE.SOA, CLAZZ.IN));
+    }
+
+    /**
+     * Adds an RR to the zone.
+     * @param {string} name The owner name (FQDN or relative — relative names
+     *   are NOT auto-qualified, callers should pass FQDNs).
+     * @param {string|number} type The RR type (e.g. "A").
+     * @param {object} data The rdata as a plain object (e.g. `{ipv4: "1.2.3.4"}`).
+     * @param {number} [ttl=300] TTL in seconds.
+     */
+    add(name, type, data, ttl = 300) {
+        const record = new Record(name, resolveTypeCode(type), CLAZZ.IN, ttl);
+        record.data = data;
+        this._message.updates.push(record);
+        return this;
+    }
+
+    /**
+     * Deletes records. Behaviour follows RFC 2136 section 2.5:
+     *   - delete(name)            -> delete all RRsets at name
+     *   - delete(name, type)      -> delete the entire RRset of that type
+     *   - delete(name, type, data)-> delete a specific RR
+     */
+    delete(name, type, data) {
+        let record;
+        if (type === undefined) {
+            // Delete all RRsets at name.
+            record = new Record(name, TYPE.ANY, CLAZZ.ANY, 0);
+            record.data = [];
+        } else if (data === undefined) {
+            // Delete the RRset of the given type at name.
+            record = new Record(name, resolveTypeCode(type), CLAZZ.ANY, 0);
+            record.data = [];
+        } else {
+            // Delete a specific RR.
+            record = new Record(name, resolveTypeCode(type), CLAZZ.NONE, 0);
+            record.data = data;
+        }
+        this._message.updates.push(record);
+        return this;
+    }
+
+    /**
+     * Replaces an RRset: deletes the existing RRset of that type and adds the
+     * new RR(s) atomically within the same UPDATE message.
+     */
+    replace(name, type, data, ttl = 300) {
+        this.delete(name, type);
+        this.add(name, type, data, ttl);
+        return this;
+    }
+
+    /**
+     * Prerequisite: at least one RR with the given name (and optionally type)
+     * MUST exist (RFC 2136 section 2.4.1 / 2.4.2).
+     */
+    requirePresent(name, type) {
+        const record = new Record(
+            name,
+            type === undefined ? TYPE.ANY : resolveTypeCode(type),
+            CLAZZ.ANY,
+            0
+        );
+        record.data = [];
+        this._message.prerequisites.push(record);
+        return this;
+    }
+
+    /**
+     * Prerequisite: NO RR with the given name (and optionally type) MUST
+     * exist (RFC 2136 section 2.4.3 / 2.4.4).
+     */
+    requireAbsent(name, type) {
+        const record = new Record(
+            name,
+            type === undefined ? TYPE.ANY : resolveTypeCode(type),
+            CLAZZ.NONE,
+            0
+        );
+        record.data = [];
+        this._message.prerequisites.push(record);
+        return this;
+    }
+
+    /**
+     * Sends the UPDATE to the server.
+     * @param {object} [options]
+     * @param {{name: string, secret: string}} [options.tsig] TSIG credentials.
+     *   When provided the message is signed before being sent.
+     * @returns {Promise<{result: object, latency: number}>}
+     */
+    async send(options = {}) {
+        let message = this._message;
+        if (options.tsig) {
+            message = await sign(message, options.tsig.name, options.tsig.secret);
+        }
+        const { result, latency } = await query(this._client.serverUrl, message);
+        return { result: this._client._formatMessage(result), latency };
+    }
+
+    /** Returns the underlying low-level UpdateMessage. */
+    toMessage() {
+        return this._message;
+    }
+}
+
+/**
+ * High-level DNS-over-HTTPS client.
+ *
+ * @example
+ *   const client = new DnsClient("https://cloudflare-dns.com/dns-query");
+ *   const res = await client.resolve("example.com", "A");
+ *   //   res.answers[0].data.ipv4 === "93.184.216.34"
+ */
+export class DnsClient {
+    /**
+     * @param {string} serverUrl The DoH endpoint URL (mandatory).
+     */
+    constructor(serverUrl) {
+        if (!serverUrl || typeof serverUrl !== "string") {
+            throw new TypeError("serverUrl is required and must be a string.");
+        }
+        this.serverUrl = serverUrl;
+    }
+
+    /**
+     * Performs a forward DNS lookup.
+     *
+     * @param {string} name The domain name to resolve.
+     * @param {string|number} [type="A"] The record type (e.g. "A", "AAAA", "MX").
+     * @returns {Promise<{question: object, answers: object[], authorities: object[], additionals: object[], rcode: string, latency: number}>}
+     */
+    async resolve(name, type = "A") {
+        if (!name || typeof name !== "string") {
+            throw new TypeError("name must be a non-empty string.");
+        }
+        const message = new QueryMessage();
+        message.questions.push(new Question(name, resolveTypeCode(type), CLAZZ.IN));
+        const { result, latency } = await query(this.serverUrl, message);
+        return { ...this._formatMessage(result), latency };
+    }
+
+    /**
+     * Performs a reverse DNS lookup (PTR query against in-addr.arpa / ip6.arpa).
+     *
+     * @param {string} ip An IPv4 or IPv6 address.
+     * @returns {Promise<{question: object, answers: object[], authorities: object[], additionals: object[], rcode: string, latency: number}>}
+     */
+    async reverse(ip) {
+        return this.resolve(buildReverseName(ip), TYPE.PTR);
+    }
+
+    /**
+     * Starts building an RFC 2136 dynamic DNS UPDATE message for the given
+     * zone. Returns an `UpdateBuilder`; populate it and call `await
+     * builder.send({tsig?})`.
+     */
+    update(zone) {
+        return new UpdateBuilder(this, zone);
+    }
+
+    /** Internal helper to format a message returned by the low-level layer. */
+    _formatMessage(message) {
+        if (message instanceof QueryMessage) {
+            return {
+                id: message.id,
+                rcode: RCODE_NAMES[message.flags.rcode] ?? message.flags.rcode,
+                question: message.questions[0] ? questionToObject(message.questions[0]) : null,
+                questions: message.questions.map(questionToObject),
+                answers: message.answers.map(recordToObject),
+                authorities: message.authorities.map(recordToObject),
+                additionals: message.additionals.map(recordToObject)
+            };
+        }
+        if (message instanceof UpdateMessage) {
+            return {
+                id: message.id,
+                rcode: RCODE_NAMES[message.flags.rcode] ?? message.flags.rcode,
+                zones: message.zones.map(questionToObject),
+                prerequisites: message.prerequisites.map(recordToObject),
+                updates: message.updates.map(recordToObject),
+                additionals: message.additionals.map(recordToObject)
+            };
+        }
+        return message;
+    }
 }

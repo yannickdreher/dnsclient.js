@@ -6,7 +6,7 @@ describe('Message should be serialized correctly', () => {
     message.flags.rd = true; // Recursion
 
     const question = new dnsclient.Question("example.com", dnsclient.TYPE.A, dnsclient.CLAZZ.IN);
-    const record   = new dnsclient.Record("example.com", dnsclient.TYPE.A, dnsclient.CLAZZ.IN, 8600, [{key: "ipv4", value: "192.0.2.1"}]);
+    const record   = new dnsclient.Record("example.com", dnsclient.TYPE.A, dnsclient.CLAZZ.IN, 8600, { ipv4: "192.0.2.1" });
 
     message.questions.push(question);
     message.answers.push(record);

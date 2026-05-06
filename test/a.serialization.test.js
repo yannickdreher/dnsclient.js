@@ -1,7 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "A" should be serialized correctly', () => {
-    const rdata  = [{key: "ipv4", value: "192.0.2.1"}];
+    const rdata  = { ipv4: "192.0.2.1" };
     const edata  = new Uint8Array([0xC0, 0x00, 0x02, 0x01]);
 
     const serialized   = dnsclient.DnsRecordSerializer.A.serialize(rdata);

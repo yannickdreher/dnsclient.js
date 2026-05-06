@@ -1,12 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "SMIMEA" should be serialized correctly', () => {
-    const rdata = [
-        {key: "usage", value: 3},
-        {key: "selector", value: 1},
-        {key: "matchingType", value: 1},
-        {key: "certAssocData", value: "abcdef1234567890"}
-    ];
+    const rdata = { usage: 3, selector: 1, matchingType: 1, certAssocData: "abcdef1234567890" };
     const edata = new Uint8Array([
         0x03,                   // Usage: 3
         0x01,                   // Selector: 1

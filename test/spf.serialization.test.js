@@ -1,9 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "SPF" should be serialized correctly', () => {
-    const rdata = [
-        {key: "text", value: "v=spf1 include:_spf.example.com ~all"}
-    ];
+    const rdata = { text: "v=spf1 include:_spf.example.com ~all" };
     const edata = new Uint8Array([
         0x24, // Length: 36
         0x76, 0x3D, 0x73, 0x70, 0x66, 0x31, 0x20, 0x69, // "v=spf1 i"

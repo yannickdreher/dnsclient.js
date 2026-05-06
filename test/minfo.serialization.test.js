@@ -1,10 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "MINFO" should be serialized correctly', () => {
-    const rdata = [
-        {key: "rmailbx", value: "admin.example.com"},
-        {key: "emailbx", value: "errors.example.com"}
-    ];
+    const rdata = { rmailbx: "admin.example.com", emailbx: "errors.example.com" };
     const edata = new Uint8Array([
         0x05, 0x61, 0x64, 0x6D, 0x69, 0x6E, // "admin"
         0x07, 0x65, 0x78, 0x61, 0x6D, 0x70, 0x6C, 0x65, // "example"

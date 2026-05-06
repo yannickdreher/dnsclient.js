@@ -1,10 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "AFSDB" should be serialized correctly', () => {
-    const rdata = [
-        {key: "subtype", value: 1},
-        {key: "hostname", value: "afs.example.com"}
-    ];
+    const rdata = { subtype: 1, hostname: "afs.example.com" };
     const edata = new Uint8Array([
         0x00, 0x01, // Subtype: 1
         0x03, 0x61, 0x66, 0x73, // "afs"

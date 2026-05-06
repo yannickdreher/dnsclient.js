@@ -1,9 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "PTR" should be serialized correctly', () => {
-    const rdata = [
-        {key: "name", value: "example.com"}
-    ];
+    const rdata = { name: "example.com" };
     const edata = new Uint8Array([
         0x07, 0x65, 0x78, 0x61, 0x6D, 0x70, 0x6C, 0x65, // "example"
         0x03, 0x63, 0x6F, 0x6D, // "com"

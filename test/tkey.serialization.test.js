@@ -1,15 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "TKEY" should be serialized correctly', () => {
-    const rdata = [
-        {key: "algorithm", value: "hmac-sha256"},
-        {key: "inception", value: new Date('2024-01-01T00:00:00Z')},
-        {key: "expiration", value: new Date('2024-12-31T23:59:59Z')},
-        {key: "mode", value: 3},
-        {key: "error", value: 0},
-        {key: "key", value: "VGVzdEtleQ=="}, // "TestKey" in base64
-        {key: "other", value: ""}
-    ];
+    const rdata = { algorithm: "hmac-sha256", inception: new Date('2024-01-01T00:00:00Z'), expiration: new Date('2024-12-31T23:59:59Z'), mode: 3, error: 0, key: "VGVzdEtleQ==", other: "" };
     const edata = new Uint8Array([
         0x0B, 0x68, 0x6D, 0x61, 0x63, 0x2D, 0x73, 0x68, 0x61, 0x32, 0x35, 0x36, // "hmac-sha256"
         0x00,                               // Null terminator
@@ -30,9 +22,9 @@ describe('Record type "TKEY" should be serialized correctly', () => {
     });
 
     test('Expect deserialization to match original data', () => {
-        expect(deserialized[0].value).toBe("hmac-sha256"); // algorithm
-        expect(deserialized[3].value).toBe(3); // mode
-        expect(deserialized[4].value).toBe(0); // error
-        expect(deserialized[5].value).toBe("VGVzdEtleQ=="); // key
+        expect(deserialized.algorithm).toBe("hmac-sha256");
+        expect(deserialized.mode).toBe(3);
+        expect(deserialized.error).toBe(0);
+        expect(deserialized.key).toBe("VGVzdEtleQ==");
     });
 });

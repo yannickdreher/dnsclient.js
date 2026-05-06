@@ -1,12 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "DS" should be serialized correctly', () => {
-    const rdata = [
-        {key: "keyTag", value: 12345},
-        {key: "algorithm", value: 5},
-        {key: "digestType", value: 1},
-        {key: "digest", value: "j0R3w4w7Z/EP9BthZA73x7AdJw4="},
-    ];
+    const rdata = { keyTag: 12345, algorithm: 5, digestType: 1, digest: "j0R3w4w7Z/EP9BthZA73x7AdJw4=" };
     const edata = new Uint8Array([
         0x30, 0x39, // Key Tag: 12345
         0x05,       // Algorithm: SHA-1 (RSA/SHA-1)
