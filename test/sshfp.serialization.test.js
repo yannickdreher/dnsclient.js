@@ -1,11 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "SSHFP" should be serialized correctly', () => {
-    const rdata = [
-        {key: "algorithm", value: 1},
-        {key: "fpType", value: 1},
-        {key: "fingerprint", value: "123456789abcdef0123456789abcdef012345678"}
-    ];
+    const rdata = { algorithm: 1, fpType: 1, fingerprint: "123456789abcdef0123456789abcdef012345678" };
     const edata = new Uint8Array([
         0x01,                   // Algorithm: 1 (RSA)
         0x01,                   // Fingerprint Type: 1 (SHA-1)

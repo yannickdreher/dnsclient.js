@@ -1,13 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "IPSECKEY" should be serialized correctly', () => {
-    const rdata = [
-        {key: "precedence", value: 10},
-        {key: "gatewayType", value: 1}, // IPv4
-        {key: "algorithm", value: 2},
-        {key: "gateway", value: "192.0.2.1"},
-        {key: "publickey", value: "VGVzdEtleQ=="} // "TestKey" in base64
-    ];
+    const rdata = { precedence: 10, gatewayType: 1, algorithm: 2, gateway: "192.0.2.1", publickey: "VGVzdEtleQ==" };
     const edata = new Uint8Array([
         0x0A,                   // Precedence: 10
         0x01,                   // Gateway Type: 1 (IPv4)

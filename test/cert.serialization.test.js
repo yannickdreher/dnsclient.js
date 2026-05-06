@@ -1,12 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "CERT" should be serialized correctly', () => {
-    const rdata = [
-        {key: "type", value: 1},
-        {key: "keyTag", value: 12345},
-        {key: "algorithm", value: 8},
-        {key: "certificate", value: "VGVzdENlcnQ="}  // "TestCert" in base64
-    ];
+    const rdata = { type: 1, keyTag: 12345, algorithm: 8, certificate: "VGVzdENlcnQ=" };
     const edata = new Uint8Array([
         0x00, 0x01,             // Type: 1
         0x30, 0x39,             // Key Tag: 12345

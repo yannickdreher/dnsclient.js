@@ -1,11 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "CSYNC" should be serialized correctly', () => {
-    const rdata = [
-        {key: "serial", value: 12345},
-        {key: "flags", value: 1},
-        {key: "typeBitmaps", value: []}
-    ];
+    const rdata = { serial: 12345, flags: 1, typeBitmaps: [] };
     const edata = new Uint8Array([
         0x00, 0x00, 0x30, 0x39, // Serial: 12345
         0x00, 0x01              // Flags: 1

@@ -1,12 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "ZONEMD" should be serialized correctly', () => {
-    const rdata = [
-        {key: "serial", value: 12345},
-        {key: "scheme", value: 1},
-        {key: "algorithm", value: 1},
-        {key: "digest", value: "abcdef1234567890"}
-    ];
+    const rdata = { serial: 12345, scheme: 1, algorithm: 1, digest: "abcdef1234567890" };
     const edata = new Uint8Array([
         0x00, 0x00, 0x30, 0x39, // Serial: 12345
         0x01,                   // Scheme: 1

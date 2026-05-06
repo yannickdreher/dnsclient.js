@@ -1,7 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "AAAA" should be serialized correctly', () => {
-    const rdata  = [{key: "ipv6", value: "2001:db8::1"}];
+    const rdata  = { ipv6: "2001:db8::1" };
     const edata  = new Uint8Array([0x20, 0x01, 0x0D, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]);
     const view   = new DataView(edata.buffer);
 

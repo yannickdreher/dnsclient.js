@@ -1,9 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "NULL" should be serialized correctly', () => {
-    const rdata = [
-        {key: "data", value: "VGVzdERhdGE="}  // "TestData" in base64
-    ];
+    const rdata = { data: "VGVzdERhdGE=" };
     const edata = new Uint8Array([0x54, 0x65, 0x73, 0x74, 0x44, 0x61, 0x74, 0x61]); // "TestData"
 
     const serialized   = dnsclient.DnsRecordSerializer.NULL.serialize(rdata);

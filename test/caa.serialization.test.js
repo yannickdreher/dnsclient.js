@@ -1,11 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "CAA" should be serialized correctly', () => {
-    const rdata = [
-        {key: "flags", value: 0},
-        {key: "tag", value: "issue"},
-        {key: "value", value: "letsencrypt.org"}
-    ];
+    const rdata = { flags: 0, tag: "issue", value: "letsencrypt.org" };
     const edata = new Uint8Array([
         0x00,                   // Flags: 0
         0x05,                   // Tag Length: 5

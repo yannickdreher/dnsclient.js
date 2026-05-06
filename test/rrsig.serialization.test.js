@@ -1,17 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "RRSIG" should be serialized correctly', () => {
-    const rdata = [
-        {key: "typeCovered", value: dnsclient.TYPE.A},
-        {key: "algorithm", value: 8},
-        {key: "labels", value: 2},
-        {key: "originalTtl", value: 86400},
-        {key: "expiration", value: new Date("1970-01-02T01:20:31.000Z")},
-        {key: "inception", value: new Date("1970-01-02T01:11:57.000Z")},
-        {key: "keyTag", value: 12345},
-        {key: "signersName", value: "example.com"},
-        {key: "signature", value: "VGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIDEzIGxhenkgZG9ncy4="}
-    ];
+    const rdata = { typeCovered: dnsclient.TYPE.A, algorithm: 8, labels: 2, originalTtl: 86400, expiration: new Date("1970-01-02T01:20:31.000Z"), inception: new Date("1970-01-02T01:11:57.000Z"), keyTag: 12345, signersName: "example.com", signature: "VGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIDEzIGxhenkgZG9ncy4=" };
     const edata = new Uint8Array([
         0x00, 0x01, // Type 1 (A Record)
         0x08, // Algorithm 8 (RSA/SHA-256)

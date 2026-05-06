@@ -1,9 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "DHCID" should be serialized correctly', () => {
-    const rdata = [
-        {key: "digest", value: "VGVzdERpZ2VzdA=="} // "TestDigest" in base64
-    ];
+    const rdata = { digest: "VGVzdERpZ2VzdA==" };
     const edata = new Uint8Array([
         0x54, 0x65, 0x73, 0x74, 0x44, 0x69, 0x67, 0x65, 0x73, 0x74 // "TestDigest"
     ]);

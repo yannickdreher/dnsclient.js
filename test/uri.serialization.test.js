@@ -1,11 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "URI" should be serialized correctly', () => {
-    const rdata = [
-        {key: "priority", value: 10},
-        {key: "weight", value: 1},
-        {key: "target", value: "https://example.com/"}
-    ];
+    const rdata = { priority: 10, weight: 1, target: "https://example.com/" };
     const edata = new Uint8Array([
         0x00, 0x0A,             // Priority: 10
         0x00, 0x01,             // Weight: 1

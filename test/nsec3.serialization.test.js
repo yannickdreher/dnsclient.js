@@ -1,14 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "NSEC3" should be serialized correctly', () => {
-    const rdata = [
-        {key: "algorithm", value: 1},
-        {key: "flags", value: 0},
-        {key: "iterations", value: 12},
-        {key: "salt", value: "aabbcc"},
-        {key: "nextHashedOwnerName", value: "123456789abcdef0"},
-        {key: "typeBitmaps", value: ["A", "NS"]}
-    ];
+    const rdata = { algorithm: 1, flags: 0, iterations: 12, salt: "aabbcc", nextHashedOwnerName: "123456789abcdef0", typeBitmaps: ["A", "NS"] };
     const edata = new Uint8Array([
         0x01,                   // Algorithm: 1
         0x00,                   // Flags: 0
@@ -30,10 +23,10 @@ describe('Record type "NSEC3" should be serialized correctly', () => {
     });
 
     test('Expect deserialization to match original data', () => {
-        expect(deserialized[0].value).toBe(1); // algorithm
-        expect(deserialized[1].value).toBe(0); // flags
-        expect(deserialized[2].value).toBe(12); // iterations
-        expect(deserialized[3].value).toBe("aabbcc"); // salt
-        expect(deserialized[4].value).toBe("123456789abcdef0"); // nextHashedOwnerName
+        expect(deserialized.algorithm).toBe(1);
+        expect(deserialized.flags).toBe(0);
+        expect(deserialized.iterations).toBe(12);
+        expect(deserialized.salt).toBe("aabbcc");
+        expect(deserialized.nextHashedOwnerName).toBe("123456789abcdef0");
     });
 });

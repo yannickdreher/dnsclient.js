@@ -11,7 +11,7 @@ describe('Message should be serialized correctly', () => {
     record.type    = dnsclient.TYPE.A;
     record.clazz   = dnsclient.CLAZZ.IN;
     record.ttl     = 8600;
-    record.data    = [{key: "ipv4", value: "192.0.2.1"}];
+    record.data    = { ipv4: "192.0.2.1" };
 
     message.questions.push(question);
     message.answers.push(record);

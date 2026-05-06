@@ -1,14 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "HTTPS" should be serialized correctly', () => {
-    const rdata = [
-        {key: "priority", value: 1},
-        {key: "target", value: "example.com"},
-        {key: "params", value: [
-            {key: 1, value: ""},  // mandatory param with no value
-            {key: 3, value: "0001"}  // port param with value 1
-        ]}
-    ];
+    const rdata = { priority: 1, target: "example.com", params: { 1: "", 3: "0001" } };
     const edata = new Uint8Array([
         0x00, 0x01,             // Priority: 1
         0x07, 0x65, 0x78, 0x61, 0x6D, 0x70, 0x6C, 0x65, // "example"

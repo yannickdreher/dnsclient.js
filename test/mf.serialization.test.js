@@ -1,9 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "MF" should be serialized correctly', () => {
-    const rdata = [
-        {key: "name", value: "forwarder.example.com"}
-    ];
+    const rdata = { name: "forwarder.example.com" };
     const edata = new Uint8Array([
         0x09, 0x66, 0x6F, 0x72, 0x77, 0x61, 0x72, 0x64, 0x65, 0x72, // "forwarder" (length 9 + 'f', 'o', 'r', 'w', 'a', 'r', 'd', 'e', 'r')
         0x07, 0x65, 0x78, 0x61, 0x6D, 0x70, 0x6C, 0x65, // "example" (length 7 + 'e', 'x', 'a', 'm', 'p', 'l', 'e')

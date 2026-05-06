@@ -11,14 +11,14 @@ describe('Reecord type "NSEC" should deserialize the data correctly', () => {
     const deserialized = dnsclient.DnsRecordSerializer.NSEC.deserialize(new DataView(data.buffer), 0, data.length);
 
     test('nextDomain is example.net', () => {
-        expect(deserialized[0].value).toBe('example.net');
+        expect(deserialized.nextDomain).toBe('example.net');
     });
 
     test('typeBitmap 1 is MB', () => {
-        expect(deserialized[1].value[0]).toBe('MB');
+        expect(deserialized.typeBitmaps[0]).toBe('MB');
     });
 
     test('typeBitmap 2 is MX', () => {
-        expect(deserialized[1].value[1]).toBe('MX');
+        expect(deserialized.typeBitmaps[1]).toBe('MX');
     });
 });

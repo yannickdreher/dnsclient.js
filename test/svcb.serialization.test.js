@@ -1,14 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "SVCB" should be serialized correctly', () => {
-    const rdata = [
-        {key: "priority", value: 1},
-        {key: "target", value: "svc.example.com"},
-        {key: "params", value: [
-            {key: 1, value: "6832"}, // alpn: h2, h3
-            {key: 3, value: "01bb"}   // port: 443
-        ]}
-    ];
+    const rdata = { priority: 1, target: "svc.example.com", params: { 1: "6832", 3: "01bb" } };
     const edata = new Uint8Array([
         0x00, 0x01,             // Priority: 1
         0x03, 0x73, 0x76, 0x63, // "svc"

@@ -1,12 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "DNSKEY" should be serialized correctly', () => {
-    const rdata = [
-        {key: "flag", value: "ZSK"},
-        {key: "protocol", value: 3},
-        {key: "algorithm", value: 8},
-        {key: "publickey", value: "VGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIDEzIGxhenkgZG9ncy4="}
-    ];
+    const rdata = { flag: "ZSK", protocol: 3, algorithm: 8, publickey: "VGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIDEzIGxhenkgZG9ncy4=" };
     const edata = new Uint8Array([
         0x01, 0x00,       // Flags: 256 (ZSK)
         0x03,             // Protokoll: 3 (DNSSEC)

@@ -1,15 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "LOC" should be serialized correctly', () => {
-    const rdata = [
-        {key: "version", value: 0},
-        {key: "size", value: 18},
-        {key: "horizPre", value: 22},
-        {key: "vertPre", value: 20},
-        {key: "latitude", value: 2147483648},
-        {key: "longitude", value: 2147483648},
-        {key: "altitude", value: 10000000}
-    ];
+    const rdata = { version: 0, size: 18, horizPre: 22, vertPre: 20, latitude: 2147483648, longitude: 2147483648, altitude: 10000000 };
     const edata = new Uint8Array([
         0x00,                   // Version: 0
         0x12,                   // Size: 18

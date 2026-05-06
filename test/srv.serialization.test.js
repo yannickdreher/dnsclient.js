@@ -1,12 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "SRV" should be serialized correctly', () => {
-    const rdata = [
-        {key: "priority", value: 10},
-        {key: "weight", value: 5},
-        {key: "port", value: 5060},
-        {key: "target", value: "sip.example.com"},
-    ];
+    const rdata = { priority: 10, weight: 5, port: 5060, target: "sip.example.com" };
     const edata = new Uint8Array([
         0x00, 0x0A, // Priority = 10
         0x00, 0x05, // Weight = 5

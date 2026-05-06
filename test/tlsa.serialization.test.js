@@ -1,12 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "TLSA" should be serialized correctly', () => {
-    const rdata = [
-        {key: "usage", value: 3},
-        {key: "selector", value: 1},
-        {key: "matchingType", value: 1},
-        {key: "certAssocData", value: "0123456789abcdef0123456789abcdef01234567"}
-    ];
+    const rdata = { usage: 3, selector: 1, matchingType: 1, certAssocData: "0123456789abcdef0123456789abcdef01234567" };
     const edata = new Uint8Array([
         0x03,                   // Usage: 3 (Domain issued certificate)
         0x01,                   // Selector: 1 (SubjectPublicKeyInfo)

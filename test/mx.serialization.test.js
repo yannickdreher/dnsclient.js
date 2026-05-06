@@ -1,10 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "MX" should be serialized correctly', () => {
-    const rdata = [
-        {key: "preference", value: 10},
-        {key: "exchange", value: "mail.example.com"}
-    ];
+    const rdata = { preference: 10, exchange: "mail.example.com" };
     const edata = new Uint8Array([
         0x00, 0x0A, // Preference: 10 (in hex)
         0x04, 0x6D, 0x61, 0x69, 0x6C, // "mail" (length 4 + 'm', 'a', 'i', 'l')

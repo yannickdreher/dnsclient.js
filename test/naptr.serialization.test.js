@@ -1,14 +1,7 @@
 import * as dnsclient from '../dnsclient.js';
 
 describe('Record type "NAPTR" should be serialized correctly', () => {
-    const rdata = [
-        {key: "order", value: 100},
-        {key: "preference", value: 10},
-        {key: "flags", value: "u"},
-        {key: "services", value: "E2U+sip"},
-        {key: "regexp", value: "!^.*$!sip:info@example.com!"},
-        {key: "replacement", value: "."}
-    ];
+    const rdata = { order: 100, preference: 10, flags: "u", services: "E2U+sip", regexp: "!^.*$!sip:info@example.com!", replacement: "." };
     const edata = new Uint8Array([
         0x00, 0x64,             // Order: 100
         0x00, 0x0A,             // Preference: 10
