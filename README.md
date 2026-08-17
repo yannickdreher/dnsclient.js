@@ -28,6 +28,7 @@ in the browser and in Node.js.
 - [Supported record types](#supported-record-types)
 - [Supported classes](#supported-classes)
 - [Error handling](#error-handling)
+- [Releases](#releases)
 - [Testing](#testing)
 - [License](#license)
 
@@ -416,6 +417,25 @@ or hex field, an unsupported opcode or an unsupported TSIG algorithm. A
 `DnsSerializer.deserialize()` accepts an `ArrayBuffer`, any typed array or a
 `DataView` — including views that cover only part of a larger buffer, which is
 what you need when a message arrives inside a DNS-over-TCP length-prefixed frame.
+
+## Releases
+
+Versions are derived automatically from [Conventional Commits](https://www.conventionalcommits.org/)
+by [release-please](https://github.com/googleapis/release-please). Merging to
+`main` updates a release pull request that bumps `package.json` and
+`CHANGELOG.md`; merging *that* pull request creates the tag and the GitHub
+release, and publishes to npm via OIDC trusted publishing.
+
+| Commit subject                    | Result           |
+|-----------------------------------|------------------|
+| `fix: ...`                        | patch (1.1.0 → 1.1.1) |
+| `feat: ...`                       | minor (1.1.0 → 1.2.0) |
+| `feat!: ...` or a `BREAKING CHANGE:` footer | major (1.1.0 → 2.0.0) |
+| `docs:`, `refactor:`, `test:`, `ci:`, `chore:` | no release |
+
+Pull requests are squash-merged, so the pull request **title** becomes the
+commit message on `main` and is what determines the version. A CI check enforces
+the convention on it.
 
 ## Testing
 

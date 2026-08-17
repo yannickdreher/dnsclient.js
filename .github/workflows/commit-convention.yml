@@ -1,0 +1,43 @@
+name: Commit convention
+
+# release-please derives the next version from the conventional commits on main.
+# With squash merges the pull request title becomes that commit message, so the
+# title is what has to follow the convention.
+on:
+  pull_request:
+    branches: [ "main" ]
+    types: [ opened, edited, reopened, synchronize ]
+
+permissions: {}
+
+jobs:
+  pr-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the pull request title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # type(optional scope)(optional !): description
+          PATTERN='^(feat|fix|perf|docs|refactor|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?!?: .+'
+
+          if [[ ! "$TITLE" =~ $PATTERN ]]; then
+            echo "::error::Pull request title is not a conventional commit: '$TITLE'"
+            echo ""
+            echo "Expected  <type>[optional scope][!]: <description>"
+            echo "Types     feat, fix, perf, docs, refactor, test, build, ci, chore, revert"
+            echo ""
+            echo "Examples  fix: reject cyclic compression pointers"
+            echo "          feat(nsec3): encode type bitmaps"
+            echo "          feat!: return DNSKEY flags as a number"
+            echo ""
+            echo "A '!' or a 'BREAKING CHANGE:' footer marks a breaking change and"
+            echo "produces a major release."
+            exit 1
+          fi
+
+          echo "Title follows the convention: $TITLE"
+
+          if [[ "$TITLE" =~ ^[a-z]+(\([a-z0-9._/-]+\))?!: ]]; then
+            echo "::notice::Marked as breaking -- this will produce a major release."
+          fi

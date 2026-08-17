@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    branches: [ "main" ]
+  # Manual escape hatch: lets you re-run the publish step if a release exists but
+  # publishing failed.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to publish (e.g. v2.0.0)'
+        required: true
+
+permissions: {}
+
+jobs:
+  # Maintains a release pull request that bumps the version and the changelog
+  # from the conventional commits on main. Merging that PR creates the tag and
+  # the GitHub release, which is what gates the publish job below.
+  release-please:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      released: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # Publishing lives in the same workflow on purpose. A release created with the
+  # default GITHUB_TOKEN does not trigger further workflow runs, so a separate
+  # workflow listening for `release: created` would silently never fire.
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # npm trusted publishing (OIDC), no long-lived token
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.release-please.outputs.tag }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test
+      - name: Compress and mangle
+        run: npx terser dnsclient.js --compress --mangle --output dnsclient.min.js
+      - name: Publish package
+        run: npm publish
+
+  # Same steps as `publish`, for the manual workflow_dispatch path.
+  publish-manual:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test
+      - name: Compress and mangle
+        run: npx terser dnsclient.js --compress --mangle --output dnsclient.min.js
+      - name: Publish package
+        run: npm publish
