@@ -195,7 +195,7 @@ describe('UpdateBuilder', () => {
         expect(msg.updates[0].clazz).toBe(dnsclient.CLAZZ.ANY);
         expect(msg.updates[0].type).toBe(dnsclient.TYPE.ANY);
         expect(msg.updates[0].ttl).toBe(0);
-        expect(msg.updates[0].data).toEqual([]);
+        expect(msg.updates[0].data).toEqual(new Uint8Array(0));
     });
 
     test('delete(name, type) removes a single RRset (CLASS=ANY)', () => {
@@ -203,7 +203,7 @@ describe('UpdateBuilder', () => {
             .delete('host.example.com', 'A').toMessage();
         expect(msg.updates[0].clazz).toBe(dnsclient.CLAZZ.ANY);
         expect(msg.updates[0].type).toBe(dnsclient.TYPE.A);
-        expect(msg.updates[0].data).toEqual([]);
+        expect(msg.updates[0].data).toEqual(new Uint8Array(0));
     });
 
     test('delete(name, type, data) removes a specific RR (CLASS=NONE)', () => {
@@ -229,7 +229,7 @@ describe('UpdateBuilder', () => {
             .requirePresent('host.example.com').toMessage();
         expect(msg.prerequisites[0].clazz).toBe(dnsclient.CLAZZ.ANY);
         expect(msg.prerequisites[0].type).toBe(dnsclient.TYPE.ANY);
-        expect(msg.prerequisites[0].data).toEqual([]);
+        expect(msg.prerequisites[0].data).toEqual(new Uint8Array(0));
     });
 
     test('requirePresent(name, type) -> CLASS=ANY, given type', () => {
@@ -273,5 +273,44 @@ describe('UpdateBuilder', () => {
         expect(result.zones[0]).toEqual({ name: 'example.com', type: 'SOA', class: 'IN' });
         expect(result.updates[0].data).toEqual({ ipv4: '1.2.3.4' });
         expect(typeof latency).toBe('number');
+    });
+});
+
+describe('UpdateBuilder messages serialize to valid DNS packets', () => {
+    // The empty-rdata records above are only correct if they also reach the wire;
+    // an unserializable rdata representation would slip past an object-only check.
+    const cases = [
+        ['delete(name)',           (b) => b.delete('host.example.com')],
+        ['delete(name, type)',     (b) => b.delete('host.example.com', 'A')],
+        ['delete(name, type, rr)', (b) => b.delete('host.example.com', 'A', {ipv4: '192.0.2.1'})],
+        ['requirePresent(name)',   (b) => b.requirePresent('host.example.com')],
+        ['requirePresent(n, t)',   (b) => b.requirePresent('host.example.com', 'A')],
+        ['requireAbsent(name)',    (b) => b.requireAbsent('host.example.com')],
+        ['replace()',              (b) => b.replace('host.example.com', 'A', {ipv4: '192.0.2.1'})],
+        ['add()',                  (b) => b.add('host.example.com', 'A', {ipv4: '192.0.2.1'})]
+    ];
+
+    test.each(cases)('%s produces a message that round-trips through the wire', (label, build) => {
+        const client = new dnsclient.DnsClient('https://dns.example.com/dns-query');
+        const builder = client.update('example.com');
+        build(builder);
+
+        const wire = dnsclient.DnsSerializer.serialize(builder.toMessage());
+        const parsed = dnsclient.DnsSerializer.deserialize(wire.buffer);
+
+        expect(parsed).toBeInstanceOf(dnsclient.UpdateMessage);
+        expect(parsed.zones[0].name).toBe('example.com');
+    });
+
+    test('a delete-RRset record carries RDLENGTH 0 on the wire', () => {
+        const client = new dnsclient.DnsClient('https://dns.example.com/dns-query');
+        const builder = client.update('example.com');
+        builder.delete('host.example.com', 'A');
+
+        const parsed = dnsclient.DnsSerializer.deserialize(
+            dnsclient.DnsSerializer.serialize(builder.toMessage()).buffer);
+
+        expect(parsed.updates[0].clazz).toBe(dnsclient.CLAZZ.ANY);
+        expect(parsed.updates[0].data).toEqual(new Uint8Array(0));
     });
 });

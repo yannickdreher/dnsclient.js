@@ -19,23 +19,30 @@ in the browser and in Node.js.
   - [`client.reverse(ip)`](#clientreverseip)
   - [`client.update(zone)` — `UpdateBuilder`](#clientupdatezone--updatebuilder)
 - [Low-level API](#low-level-api)
-  - [`query(url, message, interpreted?)`](#queryurl-message-interpreted)
-  - [`sign(message, keyName, secret)` (TSIG)](#signmessage-keyname-secret-tsig)
+  - [`query(url, message, options?)`](#queryurl-message-options)
+  - [`sign(message, keyName, secret, options?)` (TSIG)](#signmessage-keyname-secret-options-tsig)
+  - [Internationalized domain names](#internationalized-domain-names)
+  - [EDNS(0)](#edns0)
   - [`interpret(message)`](#interpretmessage)
 - [Record data format](#record-data-format)
 - [Supported record types](#supported-record-types)
 - [Supported classes](#supported-classes)
+- [Error handling](#error-handling)
 - [Testing](#testing)
 - [License](#license)
 
 ## Features
 
-- DNS-over-HTTPS (RFC 8484) — secure, modern DoH transport
-- 50+ record types including modern (SVCB/HTTPS, CAA, TLSA, SSHFP, …) and legacy
+- DNS-over-HTTPS (RFC 8484) — secure, modern DoH transport, with timeout and `AbortSignal` support
+- 54 record codecs including modern (SVCB/HTTPS, CAA, TLSA, SSHFP, …) and legacy
 - Full DNSSEC chain (DS, RRSIG, NSEC, DNSKEY, NSEC3, NSEC3PARAM, CDS, CDNSKEY, …)
+- EDNS(0) OPT pseudo-record with option parsing (RFC 6891)
 - RFC 2136 dynamic updates with a fluent `UpdateBuilder`
-- RFC 2845 TSIG signing (HMAC-SHA256, WebCrypto)
+- RFC 2845 / RFC 8945 TSIG signing (HMAC-SHA1/256/384/512, WebCrypto)
+- Automatic IDNA A-label conversion for internationalized names (RFC 5891)
 - Bidirectional binary serialization (encode + decode, name compression)
+- Hardened parser: compression-pointer loop protection, strict bounds and length checks
+- Lossless — record types without a codec keep their raw rdata instead of being dropped
 - Plain-object rdata (`{ipv4: "1.2.3.4"}`) — no proprietary key/value arrays
 - Zero runtime dependencies; works in browsers and Node.js
 
@@ -99,7 +106,7 @@ const res = await client.resolve('example.com', 'MX');
 //   questions: [ ... ],
 //   answers: [
 //     { name: "example.com", type: "MX", class: "IN", ttl: 3600,
-//       data: { priority: 10, exchange: "mail.example.com" } }
+//       data: { preference: 10, exchange: "mail.example.com" } }
 //   ],
 //   authorities:  [ ... ],
 //   additionals:  [ ... ],
@@ -151,11 +158,26 @@ const { result } = await client.update('dremaxx.de')
 Use these when you need full control over the wire format (e.g. custom
 transports, manual message construction, debugging).
 
-### `query(url, message, interpreted?)`
+### `query(url, message, options?)`
 
 POSTs an already-constructed `QueryMessage` or `UpdateMessage` to a DoH
-endpoint and returns `{result, latency}`. With `interpreted = true` the result
-is post-processed by `interpret()`.
+endpoint and returns `{result, latency}`. The third argument is either a boolean
+(`interpreted`, kept for backwards compatibility) or an options object:
+
+| Option        | Description                                            |
+|---------------|--------------------------------------------------------|
+| `interpreted` | Post-process the result with `interpret()`             |
+| `timeout`     | Abort the request after this many milliseconds         |
+| `signal`      | An `AbortSignal` to cancel the request from outside    |
+| `headers`     | Additional request headers, merged into the defaults   |
+
+```javascript
+const { result, latency } = await dnsclient.query(url, message, {
+    interpreted: true,
+    timeout: 5000,
+    signal: controller.signal
+});
+```
 
 ```javascript
 import * as dnsclient from 'dnsclient.js';
@@ -168,17 +190,64 @@ const { result, latency } = await dnsclient.query(
     'https://dns.dremaxx.de/dns-query', message, true);
 ```
 
-### `sign(message, keyName, secret)` (TSIG)
+### `sign(message, keyName, secret, options?)` (TSIG)
 
-Signs `message` in-place per RFC 2845 with HMAC-SHA256 and appends the TSIG RR
-to `message.additionals`. `secret` is a base64-encoded shared key.
+Signs `message` in-place per RFC 2845 / RFC 8945 and appends the TSIG RR to
+`message.additionals`. `secret` is a base64-encoded shared key. The MAC covers
+the message as it will be sent — before the TSIG RR is appended and before
+ARCOUNT is incremented — followed by the TSIG variables of RFC 2845 §3.4.2.
 
 ```javascript
 const signed = await dnsclient.sign(message, 'mykey', 'RGFzSXN0RWluVGVzdA==');
 const { result } = await dnsclient.query(url, signed);
 ```
 
-The high-level `UpdateBuilder.send({tsig})` does this for you.
+| Option      | Default         | Description                                    |
+|-------------|-----------------|------------------------------------------------|
+| `algorithm` | `"hmac-sha256"` | One of the keys of `TSIG_ALGORITHMS`           |
+| `fudge`     | `300`           | Permitted clock skew in seconds                |
+| `timestamp` | now             | Signing time as a `BigInt` of epoch seconds    |
+
+```javascript
+const signed = await dnsclient.sign(message, 'mykey', secret, {
+    algorithm: 'hmac-sha512' // hmac-sha1 | hmac-sha256 | hmac-sha384 | hmac-sha512
+});
+```
+
+Key and algorithm names are lower-cased before hashing, which is the canonical
+form the RFC requires. The high-level `UpdateBuilder.send({tsig})` does all of
+this for you.
+
+### Internationalized domain names
+
+Names are converted to their IDNA A-label form before they go on the wire, so
+Unicode names can be queried directly:
+
+```javascript
+await client.resolve('münchen.de', 'A'); // queried as xn--mnchen-3ya.de
+```
+
+The conversion is applied per label and only to labels containing non-ASCII
+characters, so pure ASCII names are encoded byte-for-byte including their case —
+underscore labels (`_dmarc`), wildcards (`*.example.com`) and 0x20-encoded names
+are left untouched. Responses report names as they appear on the wire, i.e. in
+A-label form.
+
+### EDNS(0)
+
+An OPT pseudo-record uses the class field for the accepted UDP payload size and
+the TTL field for the extended rcode and flags, so those live on the record
+rather than in the rdata:
+
+```javascript
+message.additionals.push(new dnsclient.Record(
+    '.',                 // OPT always uses the root name
+    dnsclient.TYPE.OPT,
+    1232,                // class field: UDP payload size
+    0,                   // ttl field: extended rcode and flags
+    { options: [{ code: 10, data: '0123456789abcdef' }] } // COOKIE, hex encoded
+));
+```
 
 ### `interpret(message)`
 
@@ -194,13 +263,34 @@ RR type. Examples:
 |---------|------------------------------------------------------------------------------|
 | `A`     | `{ ipv4: "1.2.3.4" }`                                                        |
 | `AAAA`  | `{ ipv6: "2001:db8::1" }`                                                    |
-| `MX`    | `{ priority: 10, exchange: "mail.example.com" }`                             |
+| `MX`    | `{ preference: 10, exchange: "mail.example.com" }`                             |
 | `TXT`   | `{ text: "v=spf1 ..." }`                                                     |
 | `SRV`   | `{ priority, weight, port, target }`                                         |
 | `CAA`   | `{ flags, tag, value }`                                                      |
 | `HTTPS` | `{ priority, target, params: { 1: "...", 3: "01bb" } }` (numeric SvcParamKeys) |
 | `SVCB`  | same shape as `HTTPS`                                                        |
 | `RRSIG` | `{ typeCovered, algorithm, labels, originalTtl, expiration, inception, keyTag, signersName, signature }` |
+| `NSEC`  | `{ nextDomain, typeBitmaps: ["A", "MX", "RRSIG"] }`                           |
+| `NSEC3` | `{ algorithm, flags, iterations, salt, nextHashedOwnerName, typeBitmaps }`     |
+| `CSYNC` | `{ serial, flags, typeBitmaps }`                                              |
+| `DNSKEY`| `{ flag: "ZSK" \| "KSK" \| number, protocol, algorithm, publickey }`          |
+| `OPT`   | `{ options: [{ code: 10, data: "0123456789abcdef" }] }` (EDNS(0), hex data)   |
+| `KX`    | `{ preference, exchanger }`                                                   |
+| `NID`   | `{ preference, nodeId }` — also `L32`/`L64`/`LP` with `locator32`/`locator64`/`fqdn` |
+| `EUI48` | `{ address: "00-00-5e-00-53-2a" }` — also `EUI64`                             |
+
+`typeBitmaps` holds record type names; codes without a mnemonic appear as
+`TYPE<n>` so nothing is lost. Types for which the library has no dedicated codec
+keep their rdata verbatim as a `Uint8Array` and are written back unchanged, so
+every record round-trips losslessly.
+
+**TSIG is the one exception** to the plain-object rule in spirit only: its fields
+are `algorithm`, `timestamp` (`BigInt`), `fudge`, `mac` (`Uint8Array`),
+`originalId`, `error` and `otherData` (`Uint8Array`).
+
+A `TXT` record longer than 255 bytes is split into several character-strings on
+serialization and rejoined on deserialization, so long DKIM and SPF records work
+transparently. Splits are placed on UTF-8 boundaries.
 
 See [`test/*.serialization.test.js`](test/) for the exact shape of every
 supported record type.
@@ -275,13 +365,33 @@ supported record type.
 | SPF    | 99   | Sender policy framework | RFC 7208 |
 | URI    | 256  | Uniform resource id     | RFC 7553 |
 
+### Identifiers & locators
+| Type   | Code  | Description                        | RFC      |
+|--------|-------|------------------------------------|----------|
+| X25    | 19    | X.25 PSDN address                  | RFC 1183 |
+| KX     | 36    | Key exchanger                      | RFC 2230 |
+| NID    | 104   | Node identifier                    | RFC 6742 |
+| L32    | 105   | 32-bit locator                     | RFC 6742 |
+| L64    | 106   | 64-bit locator                     | RFC 6742 |
+| LP     | 107   | Locator pointer                    | RFC 6742 |
+| EUI48  | 108   | 48-bit MAC address                 | RFC 7043 |
+| EUI64  | 109   | 64-bit MAC address                 | RFC 7043 |
+| AVC    | 258   | Application visibility and control | Cisco    |
+
 ### Transaction & control
-| Type   | Code | Description               | RFC      |
-|--------|------|---------------------------|----------|
-| TKEY   | 249  | Transaction key           | RFC 2930 |
-| TSIG   | 250  | Transaction signature     | RFC 2845 |
-| NULL   | 10   | Arbitrary data            | RFC 1035 |
-| ANY    | 255  | Query for any record type | RFC 1035 |
+| Type   | Code  | Description                   | RFC      |
+|--------|-------|-------------------------------|----------|
+| NULL   | 10    | Arbitrary data                | RFC 1035 |
+| OPT    | 41    | EDNS(0) pseudo-record         | RFC 6891 |
+| TKEY   | 249   | Transaction key               | RFC 2930 |
+| TSIG   | 250   | Transaction signature         | RFC 2845 |
+| ANY    | 255   | Query for any record type     | RFC 1035 |
+| TA     | 32768 | DNSSEC trust anchor           | —        |
+| DLV    | 32769 | DNSSEC lookaside validation   | RFC 4431 |
+
+Every code in `TYPE_NAMES` has a matching entry in `TYPE`, so types beyond the
+ones listed above can be queried by code as well; their rdata is kept as raw
+bytes.
 
 ## Supported classes
 
@@ -294,15 +404,33 @@ supported record type.
 | NONE  | 254  | QCLASS NONE       |
 | ANY   | 255  | QCLASS ANY        |
 
+## Error handling
+
+The parser rejects malformed input rather than returning silently wrong data.
+Expect an `Error` for a truncated message, an rdata length that does not match
+the record type, a cyclic or out-of-range compression pointer, a name or label
+that exceeds the RFC 1035 size limits, a malformed IP address, an invalid base64
+or hex field, an unsupported opcode or an unsupported TSIG algorithm. A
+`RangeError` is raised when a read would leave the bounds of the supplied buffer.
+
+`DnsSerializer.deserialize()` accepts an `ArrayBuffer`, any typed array or a
+`DataView` — including views that cover only part of a larger buffer, which is
+what you need when a message arrives inside a DNS-over-TCP length-prefixed frame.
+
 ## Testing
 
 ```bash
-npm test
+npm test        # run the suite
+npm run coverage # run it with a coverage report
 ```
 
-The repository ships with 46 Jest test suites covering serialization /
-deserialization for every supported record type, the high-level `DnsClient` /
-`UpdateBuilder` API (with mocked `fetch`) and TSIG signing.
+The repository ships with 58 Jest suites and 536 tests covering serialization
+and deserialization for every supported record type, the high-level `DnsClient` /
+`UpdateBuilder` API (with mocked `fetch`), TSIG signing, IDNA conversion and the
+parser's rejection of malformed input. Wire-format expectations are pinned
+against the byte sequences from the relevant RFCs, and the TSIG MAC is
+cross-checked against an independent HMAC computation. Coverage is 95% of
+statements and 96% of functions in `dnsclient.js`.
 
 ## License
 
