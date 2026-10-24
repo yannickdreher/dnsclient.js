@@ -1,6 +1,6 @@
 import * as dnsclient from '../dnsclient.js';
 
-describe('Message should be serialized correctly', () => {
+describe('Message should be serialized correctly without name compression', () => {
     const message    = new dnsclient.QueryMessage();
     message.id       = 1234;
     message.flags.rd = 1; // Recursion
@@ -61,7 +61,7 @@ describe('Message should be serialized correctly', () => {
         0xC0, 0x00, 0x02, 0x01,  // 192.0.2.1
     ]);
 
-    const serialized   = dnsclient.DnsSerializer.serialize(message);
+    const serialized   = dnsclient.DnsSerializer.serialize(message, {compress: false});
 
     test('Expect buffer to be equal', () => {
         expect(serialized).toEqual(edata);

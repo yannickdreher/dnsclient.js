@@ -34,15 +34,15 @@ in the browser and in Node.js.
 
 ## Features
 
-- DNS-over-HTTPS (RFC 8484) — secure, modern DoH transport, with timeout and `AbortSignal` support
+- DNS-over-HTTPS (RFC 8484) via POST or cache-friendly GET, with timeout and `AbortSignal` support
 - 54 record codecs including modern (SVCB/HTTPS, CAA, TLSA, SSHFP, …) and legacy
 - Full DNSSEC chain (DS, RRSIG, NSEC, DNSKEY, NSEC3, NSEC3PARAM, CDS, CDNSKEY, …)
 - EDNS(0) OPT pseudo-record with option parsing (RFC 6891)
 - RFC 2136 dynamic updates with a fluent `UpdateBuilder`
 - RFC 2845 / RFC 8945 TSIG signing (HMAC-SHA1/256/384/512, WebCrypto)
 - Automatic IDNA A-label conversion for internationalized names (RFC 5891)
-- Bidirectional binary serialization (encode + decode, name compression)
-- Hardened parser: compression-pointer loop protection, strict bounds and length checks
+- Bidirectional binary serialization with name compression in both directions (RFC 1035 §4.1.4, RFC 3597 §4)
+- Hardened parser: compression-pointer loop protection, rdata confined to its RDLENGTH, strict bounds and length checks
 - Lossless — record types without a codec keep their raw rdata instead of being dropped
 - Plain-object rdata (`{ipv4: "1.2.3.4"}`) — no proprietary key/value arrays
 - Zero runtime dependencies; works in browsers and Node.js
@@ -85,12 +85,15 @@ console.log(res.answers[0].data.ipv4); // "5.75.173.96"
 The recommended entry point is the `DnsClient` class. It returns user-friendly
 objects with named record types and plain-object rdata.
 
-### `new DnsClient(serverUrl)`
+### `new DnsClient(serverUrl, options?)`
 
-Creates a client bound to a DoH endpoint URL.
+Creates a client bound to a DoH endpoint URL. Pass `{method: "GET"}` to send
+lookups as GET requests; they then use message ID 0 as RFC 8484 §4.1
+recommends, so HTTP caches can answer repeated queries. Updates always use POST.
 
 ```javascript
 const client = new DnsClient('https://cloudflare-dns.com/dns-query');
+const cached = new DnsClient('https://cloudflare-dns.com/dns-query', { method: 'GET' });
 ```
 
 ### `client.resolve(name, type?)`
@@ -161,8 +164,10 @@ transports, manual message construction, debugging).
 
 ### `query(url, message, options?)`
 
-POSTs an already-constructed `QueryMessage` or `UpdateMessage` to a DoH
-endpoint and returns `{result, latency}`. The third argument is either a boolean
+Sends an already-constructed `QueryMessage` or `UpdateMessage` to a DoH
+endpoint and returns `{result, latency}`. The response must be a DNS message
+(`application/dns-message`) with the QR bit set and the same ID as the query;
+anything else is rejected. The third argument is either a boolean
 (`interpreted`, kept for backwards compatibility) or an options object:
 
 | Option        | Description                                            |
@@ -171,6 +176,7 @@ endpoint and returns `{result, latency}`. The third argument is either a boolean
 | `timeout`     | Abort the request after this many milliseconds         |
 | `signal`      | An `AbortSignal` to cancel the request from outside    |
 | `headers`     | Additional request headers, merged into the defaults   |
+| `method`      | `"POST"` (default) or `"GET"` — GET carries the message base64url-encoded in the `dns` parameter |
 
 ```javascript
 const { result, latency } = await dnsclient.query(url, message, {
@@ -197,6 +203,8 @@ Signs `message` in-place per RFC 2845 / RFC 8945 and appends the TSIG RR to
 `message.additionals`. `secret` is a base64-encoded shared key. The MAC covers
 the message as it will be sent — before the TSIG RR is appended and before
 ARCOUNT is incremented — followed by the TSIG variables of RFC 2845 §3.4.2.
+Signing an already signed message replaces its TSIG RR, so a message (or an
+`UpdateBuilder`) can be signed and sent again.
 
 ```javascript
 const signed = await dnsclient.sign(message, 'mykey', 'RGFzSXN0RWluVGVzdA==');
@@ -411,8 +419,14 @@ The parser rejects malformed input rather than returning silently wrong data.
 Expect an `Error` for a truncated message, an rdata length that does not match
 the record type, a cyclic or out-of-range compression pointer, a name or label
 that exceeds the RFC 1035 size limits, a malformed IP address, an invalid base64
-or hex field, an unsupported opcode or an unsupported TSIG algorithm. A
+or hex field, a character-string longer than 255 bytes, an unsupported opcode
+or an unsupported TSIG algorithm. A
 `RangeError` is raised when a read would leave the bounds of the supplied buffer.
+
+`DnsSerializer.serialize(message, {compress})` compresses repeated names by
+default. Only owner names and the rdata of the RFC 1035 types (NS, CNAME, SOA,
+PTR, MX, …) are compressed; all other rdata stays uncompressed as RFC 3597 §4
+requires. Pass `{compress: false}` for the plain encoding.
 
 `DnsSerializer.deserialize()` accepts an `ArrayBuffer`, any typed array or a
 `DataView` — including views that cover only part of a larger buffer, which is

@@ -94,3 +94,22 @@ describe('Internationalized names work in the records that carry names', () => {
         expect(back.rname).toBe("hostmaster.xn--mnchen-3ya.de");
     });
 });
+
+describe('Labels that the URL parser would split are rejected', () => {
+    test.each([
+        ["ü@evil.com"],
+        ["münchen:80.de"],
+        ["ü/path.de"],
+        ["ü?q.de"],
+        ["ü#frag.de"],
+        ["ü\\x.de"],
+        ["ü%41.de"],
+        ["ü x.de"]
+    ])('Expect %s not to be silently turned into another name', (name) => {
+        expect(() => wire(name)).toThrow(/cannot be converted to an IDNA A-label/);
+    });
+
+    test('Expect such characters to stay allowed in pure ASCII labels', () => {
+        expect(wire("_sip@x.example")).toEqual(bytes(6, 0x5f, 0x73, 0x69, 0x70, 0x40, 0x78, 7, ...Buffer.from("example"), 0));
+    });
+});
